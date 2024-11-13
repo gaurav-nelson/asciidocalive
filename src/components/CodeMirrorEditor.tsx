@@ -1,5 +1,5 @@
 import { useEffect, useRef, forwardRef } from 'react';
-import { EditorState } from '@codemirror/state';
+import { EditorState, StateEffect } from '@codemirror/state';
 import {
   EditorView,
   keymap,
@@ -20,7 +20,6 @@ interface CodeMirrorEditorProps {
   onEditorCreated: (editor: EditorView) => void;
 }
 
-// Ensure theme configurations are created outside component to prevent recreation
 const baseTheme = EditorView.baseTheme({
   '&': {
     height: '100%',
@@ -81,7 +80,11 @@ const customLightTheme = EditorView.theme({
   },
 });
 
-// Create extension arrays outside component
+const getThemeExtensions = (isDark: boolean) =>
+  isDark
+    ? oneDark
+    : [customLightTheme, syntaxHighlighting(lightHighlightStyle)];
+
 const createExtensions = (isDark: boolean, onChange: (value: string) => void) => [
   history(),
   lineNumbers(),
@@ -95,13 +98,11 @@ const createExtensions = (isDark: boolean, onChange: (value: string) => void) =>
     }
   }),
   baseTheme,
-  isDark
-    ? oneDark
-    : [customLightTheme, syntaxHighlighting(lightHighlightStyle)],
+  getThemeExtensions(isDark),
 ];
 
 const CodeMirrorEditor = forwardRef<HTMLDivElement, CodeMirrorEditorProps>(
-  ({ initialValue, onChange, isDark, onEditorCreated }, ref) => {
+  ({ initialValue, onChange, isDark, onEditorCreated }) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView>();
 
@@ -136,11 +137,9 @@ const CodeMirrorEditor = forwardRef<HTMLDivElement, CodeMirrorEditorProps>(
       if (!viewRef.current) return;
 
       try {
-        const view = viewRef.current;
-        const extensions = createExtensions(isDark, onChange);
-
-        view.dispatch({
-          effects: EditorState.reconfigure.of(extensions)
+        //const themeExtensions = getThemeExtensions(isDark);
+        viewRef.current.dispatch({
+          effects: StateEffect.reconfigure.of(createExtensions(isDark, onChange))
         });
       } catch (error) {
         console.error('Error updating CodeMirror theme:', error);
