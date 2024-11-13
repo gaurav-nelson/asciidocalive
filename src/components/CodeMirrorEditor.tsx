@@ -1,5 +1,5 @@
 import { useEffect, useRef, forwardRef } from 'react';
-import { EditorState, StateEffect } from '@codemirror/state';
+import { EditorState } from '@codemirror/state';
 import {
   EditorView,
   keymap,
@@ -129,7 +129,7 @@ const CodeMirrorEditor = forwardRef<HTMLDivElement, CodeMirrorEditorProps>(
       } catch (error) {
         console.error('Error initializing CodeMirror:', error);
       }
-    }, [initialValue, onChange, isDark, onEditorCreated]);
+    }, [onChange, isDark, onEditorCreated]);
 
     // Handle theme changes
     useEffect(() => {
@@ -140,7 +140,7 @@ const CodeMirrorEditor = forwardRef<HTMLDivElement, CodeMirrorEditorProps>(
         const extensions = createExtensions(isDark, onChange);
 
         view.dispatch({
-          effects: StateEffect.reconfigure.of(extensions)
+          effects: EditorState.reconfigure.of(extensions)
         });
       } catch (error) {
         console.error('Error updating CodeMirror theme:', error);
