@@ -18,7 +18,6 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ isDark, onToggle }) => {
       ) : (
         <Moon className="h-4 w-4" />
       )}
-      <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
     </button>
   );
 };

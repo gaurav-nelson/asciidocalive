@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Download, Upload } from 'lucide-react';
+import { FileText, Download, Upload, Github } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { exportToPDF } from '../utils/pdfExport';
 
@@ -40,9 +40,9 @@ const Navbar: React.FC<NavbarProps> = ({
 
   const onExportClick = async (format: string) => {
     if (!getEditorContent) return;
-    
+
     setIsExporting(true);
-    
+
     try {
       if (format === 'PDF') {
         await exportToPDF();
@@ -129,6 +129,19 @@ const Navbar: React.FC<NavbarProps> = ({
           <div className="h-6 w-px bg-slate-600"></div>
 
           <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
+
+          <div className="h-6 w-px bg-slate-600"></div>
+
+          <a
+            href="https://github.com/gaurav-nelson/asciidocalive"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-slate-700 transition-colors"
+            title="View on GitHub"
+          >
+            <Github className="h-4 w-4" />
+            <span>GitHub</span>
+          </a>
         </div>
       </div>
     </nav>
