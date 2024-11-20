@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Download, Upload, Github } from 'lucide-react';
+import { Download, Upload, Github } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import Modal from './Modal';
+
+const favicon32 = new URL('../assets/favicon-32x32.png', import.meta.url).href;
+const docsWriterLogo = new URL('../assets/docswriter.png.webp', import.meta.url).href;
 
 interface NavbarProps {
   isDark: boolean;
@@ -262,7 +265,7 @@ const Navbar: React.FC<NavbarProps> = ({
     <nav className="bg-slate-900 dark:bg-slate-900 text-white p-4">
       <div className="container mx-auto flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <FileText className="h-6 w-6" />
+          <img src={favicon32} alt="Logo" className="h-6 w-6" />
           <span className="text-xl font-bold">AsciiDoc Alive</span>
         </div>
 
@@ -359,6 +362,19 @@ const Navbar: React.FC<NavbarProps> = ({
           >
             <Github className="h-4 w-4" />
             <span>GitHub</span>
+          </a>
+
+          <div className="h-6 w-px bg-slate-600"></div>
+
+          <a
+            href="https://www.docswriter.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-slate-700 transition-colors"
+            title="Visit DocsWriter"
+          >
+            <img src={docsWriterLogo} alt="DocsWriter Logo" className="h-4 w-8" />
+            <span>DocsWriter</span>
           </a>
         </div>
       </div>
