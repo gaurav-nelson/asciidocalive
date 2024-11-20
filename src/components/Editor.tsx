@@ -141,7 +141,7 @@ const Editor: React.FC<EditorProps> = ({
       >
         <link
           rel="stylesheet"
-          href="http://cdnjs.cloudflare.com/ajax/libs/font-awesome/3.2.1/css/font-awesome.min.css"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/3.2.1/css/font-awesome.min.css"
         />
         <link
           rel="stylesheet"
