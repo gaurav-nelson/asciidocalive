@@ -102,7 +102,7 @@ const createExtensions = (isDark: boolean, onChange: (value: string) => void) =>
 ];
 
 const CodeMirrorEditor = forwardRef<HTMLDivElement, CodeMirrorEditorProps>(
-  ({ initialValue, onChange, isDark, onEditorCreated }) => {
+  ({ initialValue, onChange, isDark, onEditorCreated }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView>();
 
@@ -137,7 +137,6 @@ const CodeMirrorEditor = forwardRef<HTMLDivElement, CodeMirrorEditorProps>(
       if (!viewRef.current) return;
 
       try {
-        //const themeExtensions = getThemeExtensions(isDark);
         viewRef.current.dispatch({
           effects: StateEffect.reconfigure.of(createExtensions(isDark, onChange))
         });
@@ -158,7 +157,7 @@ const CodeMirrorEditor = forwardRef<HTMLDivElement, CodeMirrorEditorProps>(
       }
     }, [initialValue]);
 
-    return <div ref={editorRef} className="h-full" />;
+    return <div ref={ref || editorRef} className="h-full" />;
   }
 );
 
