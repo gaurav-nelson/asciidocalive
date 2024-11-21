@@ -119,7 +119,7 @@ const Editor: React.FC<EditorProps> = ({
     <div
       className={`${
         isDark ? "bg-slate-800" : "bg-white"
-      } flex-1 grid grid-cols-2 gap-6 h-[calc(100vh-8rem)]`}
+      } flex-1 grid grid-cols-2 gap-6 h-[calc(100vh-4rem)] overflow-hidden`} // Added overflow-hidden
     >
       <div
         className={`${
