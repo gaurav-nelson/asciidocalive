@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Upload, Github } from 'lucide-react';
+import { Download, Upload, Github, Menu, X } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import Modal from './Modal';
 
@@ -28,6 +28,24 @@ const Navbar: React.FC<NavbarProps> = ({
   const [url, setUrl] = useState('');
   const [importSource, setImportSource] = useState<'GitHub' | 'GitLab' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   const handleImportFromUrl = async () => {
     if (!url) {
@@ -268,8 +286,13 @@ const Navbar: React.FC<NavbarProps> = ({
           <img src={favicon32} alt="Logo" className="h-6 w-6" />
           <span className="text-xl font-bold">AsciiDoc Alive</span>
         </div>
-
-        <div className="flex items-center space-x-4">
+        <button
+          className="md:hidden flex items-center px-3 py-2 rounded hover:bg-slate-700 transition-colors"
+          onClick={toggleMobileMenu}
+        >
+          {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
+        <div className={`md:flex items-center space-x-4 ${isMobileMenuOpen ? 'block' : 'hidden'}`}>
           {/* Hidden file input */}
           <input
             type="file"
@@ -347,11 +370,13 @@ const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          <div className="h-6 w-px bg-slate-600"></div>
+          <div className="hidden md:block h-6 w-px bg-slate-600"></div>
+          <div className="block md:hidden h-px w-full bg-slate-600 my-2"></div>
 
           <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
 
-          <div className="h-6 w-px bg-slate-600"></div>
+          <div className="hidden md:block h-6 w-px bg-slate-600"></div>
+          <div className="block md:hidden h-px w-full bg-slate-600 my-2"></div>
 
           <a
             href="https://github.com/gaurav-nelson/asciidocalive"
@@ -364,7 +389,8 @@ const Navbar: React.FC<NavbarProps> = ({
             <span>GitHub</span>
           </a>
 
-          <div className="h-6 w-px bg-slate-600"></div>
+          <div className="hidden md:block h-6 w-px bg-slate-600"></div>
+          <div className="block md:hidden h-px w-full bg-slate-600 my-2"></div>
 
           <a
             href="https://www.docswriter.com"
