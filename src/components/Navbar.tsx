@@ -281,7 +281,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <nav className="bg-slate-900 dark:bg-slate-900 text-white p-4">
-      <div className="container mx-auto flex items-center justify-between">
+      <div className="noselect mx-auto flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <img src={favicon32} alt="Logo" className="h-6 w-6" />
           <span className="text-xl font-bold">AsciiDoc Alive</span>
@@ -316,7 +316,7 @@ const Navbar: React.FC<NavbarProps> = ({
                   className="block w-full text-left px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                   onClick={() => onImportClick('file')}
                 >
-                  Upload a file
+                  Local file
                 </button>
                 <button
                   className="block w-full text-left px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
