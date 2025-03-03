@@ -287,7 +287,7 @@ const Navbar: React.FC<NavbarProps> = ({
           <span className="text-xl font-bold">AsciiDoc Alive</span>
         </div>
         <button
-          className="md:hidden flex items-center px-3 py-2 rounded hover:bg-slate-700 transition-colors"
+          className="md:hidden flex items-center px-3 py-2 rounded-sm hover:bg-slate-700 transition-colors"
           onClick={toggleMobileMenu}
         >
           {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -304,7 +304,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
           <div className="relative" ref={importDropdownRef}>
             <button
-              className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-slate-700 transition-colors"
+              className="flex items-center space-x-2 px-3 py-2 rounded-sm hover:bg-slate-700 transition-colors"
               onClick={toggleImportDropdown}
             >
               <Upload className="h-4 w-4" />
@@ -336,7 +336,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
           <div className="relative" ref={exportDropdownRef}>
             <button
-              className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-slate-700 transition-colors"
+              className="flex items-center space-x-2 px-3 py-2 rounded-sm hover:bg-slate-700 transition-colors"
               onClick={toggleExportDropdown}
               disabled={isExporting}
             >
@@ -382,7 +382,7 @@ const Navbar: React.FC<NavbarProps> = ({
             href="https://github.com/gaurav-nelson/asciidocalive"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-slate-700 transition-colors"
+            className="flex items-center space-x-2 px-3 py-2 rounded-sm hover:bg-slate-700 transition-colors"
             title="View on GitHub"
           >
             <Github className="h-4 w-4" />
@@ -396,7 +396,7 @@ const Navbar: React.FC<NavbarProps> = ({
             href="https://www.docswriter.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-slate-700 transition-colors"
+            className="flex items-center space-x-2 px-3 py-2 rounded-sm hover:bg-slate-700 transition-colors"
             title="Visit DocsWriter"
           >
             <img src={docsWriterLogo} alt="DocsWriter Logo" className="h-4 w-8" />
@@ -421,7 +421,7 @@ const Navbar: React.FC<NavbarProps> = ({
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder={`Enter ${importSource} raw file URL`}
-              className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded dark:bg-slate-700 dark:text-white"
+              className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-sm dark:bg-slate-700 dark:text-white"
             />
             <p className="text-sm text-slate-600 dark:text-slate-400">
               {importSource === 'GitHub'
