@@ -67,19 +67,21 @@ const Editor: React.FC<EditorProps> = ({
   fileContent,
   onEditorReady,
 }) => {
-  const [content, setContent] = useState(defaultContent);
+  const [content, setContent] = useState(() => {
+    const savedContent = localStorage.getItem("asciidocalivecontent");
+    return savedContent || defaultContent;
+  });
   const [html, setHtml] = useState("");
   const [editorView, setEditorView] = useState<EditorView | null>(null);
   const [asciidoctorStyles, setAsciidoctorStyles] = useState("");
 
   useEffect(() => {
-    // Fetch Asciidoctor CSS
     const cssUrl = isDark
       ? "https://raw.githubusercontent.com/gaurav-nelson/scripts/refs/heads/main/asciidoctordark.css"
       : "https://raw.githubusercontent.com/asciidoctor/asciidoctor/main/src/stylesheets/asciidoctor.css";
     fetch(cssUrl)
       .then((response) => response.text())
-      .then((styles) => setAsciidoctorStyles(styles))
+      .then(setAsciidoctorStyles)
       .catch((error) =>
         console.error("Error loading Asciidoctor styles:", error)
       );
@@ -88,6 +90,7 @@ const Editor: React.FC<EditorProps> = ({
   useEffect(() => {
     if (fileContent) {
       setContent(fileContent);
+      localStorage.setItem("asciidocalivecontent", fileContent);
     }
   }, [fileContent]);
 
@@ -101,9 +104,8 @@ const Editor: React.FC<EditorProps> = ({
         },
       }) as string;
       setHtml(converted);
-      setTimeout(() => {
-        hljs.highlightAll();
-      }, 0);
+      setTimeout(hljs.highlightAll, 0);
+      localStorage.setItem("asciidocalivecontent", content);
     } catch (error) {
       console.error("Error converting AsciiDoc:", error);
     }
@@ -125,7 +127,7 @@ const Editor: React.FC<EditorProps> = ({
     <div
       className={`${
         isDark ? "bg-slate-800" : "bg-white"
-      } flex-1 grid grid-cols-2 gap-6 h-[calc(100vh-4rem)] overflow-hidden`} // Added overflow-hidden
+      } flex-1 grid grid-cols-2 gap-6 h-[calc(100vh-4rem)] overflow-hidden`}
     >
       <div
         className={`${
@@ -175,7 +177,6 @@ const Editor: React.FC<EditorProps> = ({
           `
               : ""
           }
-          /* Ensure Highlight.js styles take precedence */
           pre, code {
             all: unset;
           }
