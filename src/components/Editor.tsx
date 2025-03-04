@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import asciidoctor from "asciidoctor";
 import CodeMirrorEditor from "./CodeMirrorEditor";
 import { EditorView } from "@codemirror/view";
+import hljs from 'highlight.js';
+import 'highlight.js/styles/default.css';
 const processor = asciidoctor();
 
 const defaultContent = `= Welcome to AsciiDoc Alive
@@ -65,19 +67,21 @@ const Editor: React.FC<EditorProps> = ({
   fileContent,
   onEditorReady,
 }) => {
-  const [content, setContent] = useState(defaultContent);
+  const [content, setContent] = useState(() => {
+    const savedContent = localStorage.getItem("asciidocalivecontent");
+    return savedContent || defaultContent;
+  });
   const [html, setHtml] = useState("");
   const [editorView, setEditorView] = useState<EditorView | null>(null);
   const [asciidoctorStyles, setAsciidoctorStyles] = useState("");
 
   useEffect(() => {
-    // Fetch Asciidoctor CSS
     const cssUrl = isDark
       ? "https://raw.githubusercontent.com/gaurav-nelson/scripts/refs/heads/main/asciidoctordark.css"
       : "https://raw.githubusercontent.com/asciidoctor/asciidoctor/main/src/stylesheets/asciidoctor.css";
     fetch(cssUrl)
       .then((response) => response.text())
-      .then((styles) => setAsciidoctorStyles(styles))
+      .then(setAsciidoctorStyles)
       .catch((error) =>
         console.error("Error loading Asciidoctor styles:", error)
       );
@@ -86,6 +90,7 @@ const Editor: React.FC<EditorProps> = ({
   useEffect(() => {
     if (fileContent) {
       setContent(fileContent);
+      localStorage.setItem("asciidocalivecontent", fileContent);
     }
   }, [fileContent]);
 
@@ -96,16 +101,19 @@ const Editor: React.FC<EditorProps> = ({
         attributes: {
           showtitle: true,
           "source-highlighter": "highlight.js",
-          icons: "font",
-          toc: "auto",
-          "toc-title": "Table of Contents",
         },
       }) as string;
       setHtml(converted);
+      setTimeout(hljs.highlightAll, 0);
+      localStorage.setItem("asciidocalivecontent", content);
     } catch (error) {
       console.error("Error converting AsciiDoc:", error);
     }
-  }, [content]);
+  }, [content, isDark]);
+
+  useEffect(() => {
+    hljs.highlightAll();
+  }, []);
 
   const handleEditorCreated = useCallback(
     (view: EditorView) => {
@@ -119,7 +127,7 @@ const Editor: React.FC<EditorProps> = ({
     <div
       className={`${
         isDark ? "bg-slate-800" : "bg-white"
-      } flex-1 grid grid-cols-2 gap-6 h-[calc(100vh-4rem)] overflow-hidden`} // Added overflow-hidden
+      } flex-1 grid grid-cols-2 gap-6 h-[calc(100vh-4rem)] overflow-hidden`}
     >
       <div
         className={`${
@@ -139,16 +147,6 @@ const Editor: React.FC<EditorProps> = ({
           isDark ? "bg-slate-800" : "bg-white"
         } overflow-auto asciidocalive-preview`}
       >
-        <link
-          rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/3.2.1/css/font-awesome.min.css"
-        />
-        <link
-          rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/default.min.css"
-        />
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-        <script>hljs.highlightAll();</script>
         <style>{`
           .asciidocalive-preview {
             padding: 1rem;
@@ -178,6 +176,9 @@ const Editor: React.FC<EditorProps> = ({
             }
           `
               : ""
+          }
+          pre, code {
+            all: unset;
           }
         `}</style>
         <div
