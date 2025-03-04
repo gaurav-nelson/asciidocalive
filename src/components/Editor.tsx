@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import asciidoctor from "asciidoctor";
 import CodeMirrorEditor from "./CodeMirrorEditor";
 import { EditorView } from "@codemirror/view";
+import hljs from 'highlight.js';
+import 'highlight.js/styles/default.css';
 const processor = asciidoctor();
 
 const defaultContent = `= Welcome to AsciiDoc Alive
@@ -99,10 +101,17 @@ const Editor: React.FC<EditorProps> = ({
         },
       }) as string;
       setHtml(converted);
+      setTimeout(() => {
+        hljs.highlightAll();
+      }, 0);
     } catch (error) {
       console.error("Error converting AsciiDoc:", error);
     }
-  }, [content]);
+  }, [content, isDark]);
+
+  useEffect(() => {
+    hljs.highlightAll();
+  }, []);
 
   const handleEditorCreated = useCallback(
     (view: EditorView) => {
@@ -165,6 +174,10 @@ const Editor: React.FC<EditorProps> = ({
             }
           `
               : ""
+          }
+          /* Ensure Highlight.js styles take precedence */
+          pre, code {
+            all: unset;
           }
         `}</style>
         <div

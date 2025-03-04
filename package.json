@@ -18,6 +18,7 @@
     "asciidoctor": "^3.0.4",
     "codemirror": "^6.0.1",
     "codemirror-asciidoc": "^2.0.1",
+    "highlight.js": "^11.11.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.0",
     "lucide-react": "^0.477.0",
