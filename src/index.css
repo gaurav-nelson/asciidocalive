@@ -58,3 +58,12 @@ html, body, #root {
 pre, code {
   all: unset;
 }
+
+/* Smooth slide and curve animations */
+.transition-transform {
+  transition: transform 0.5s ease-in-out;
+}
+
+.transition-opacity {
+  transition: opacity 0.5s ease-in-out;
+}
