@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /node_modules/
+Disallow: /src/
+Disallow: /dist/
+Disallow: /build/
+Disallow: /private/
+Allow: /
+
+Sitemap: https://asciidocalive.docswriter.com/sitemap.xml
