@@ -6,17 +6,17 @@
 
 ## Features
 
-- Real-time preview
-- Syntax highlighting with CodeMirror
-- Line numbers
-- Dark theme
-- Import local files
-- Import from GitHub and GitLab URLs
-- Export to HTML, PDF, and AsciiDoc
-- Works offline
-- No server-side processing
-- No registration required
-- Changes saved in the browser's local storage
-- Clean interface
-- Fast and responsive
-- No ads, no tracking, no cookies
+- **Editing Experience**: Real-time preview, syntax highlighting, line numbering, and dark mode.
+- **File Handling**: Import local files and GitHub and GitLab URLs; export to HTML, PDF, and AsciiDoc.
+- **Performance & Privacy**:
+Works offline, auto-save, no registration, ads, tracking, or cookies.
+
+## Install as a web app
+
+You can install AsciiDoc Alive as a web app on your device:
+- **Desktop**: Use the "Install" option in your browser's menu (Chrome, Edge, Firefox).
+    ![Image](https://github.com/user-attachments/assets/b2f73c8c-b5b8-423c-9abd-469415ead94a)
+
+    ![Image](https://github.com/user-attachments/assets/c6872173-37d4-400f-a2e0-82d2a181d4f7)
+- **Mobile**: Use the "Add to Home Screen" option in your browser's menu (Chrome, Safari).
+
