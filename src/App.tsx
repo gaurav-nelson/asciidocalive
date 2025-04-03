@@ -1,6 +1,7 @@
-import React, { useState, useCallback } from 'react';
-import Navbar from './components/Navbar';
-import Editor from './components/Editor';
+import React, { useState, useCallback, Suspense, lazy } from 'react';
+
+const Navbar = lazy(() => import('./components/Navbar'));
+const Editor = lazy(() => import('./components/Editor'));
 
 const App: React.FC = () => {
   const [isDark, setIsDark] = useState(false);
@@ -20,19 +21,19 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <>
+    <Suspense fallback={<div>Loading...</div>}>
       <Navbar
         isDark={isDark}
         onToggleTheme={handleToggleTheme}
         onFileLoad={handleFileLoad}
         getEditorContent={getEditorContent}
       />
-      <Editor 
-        isDark={isDark} 
-        fileContent={fileContent} 
+      <Editor
+        isDark={isDark}
+        fileContent={fileContent}
         onEditorReady={handleEditorReady}
       />
-    </>
+    </Suspense>
   );
 };
 
