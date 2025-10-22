@@ -11,6 +11,7 @@ import RefreshDiagramsButton from './navbar/RefreshDiagramsButton';
 import Divider from './navbar/Divider';
 import useClickOutside from '../hooks/useClickOutside';
 import { exportToAsciiDoc, exportToPDF, exportToHTML } from '../utils/exportUtils';
+import packageJson from '../../package.json';
 
 const favicon32 = new URL('../assets/favicon-32x32.png', import.meta.url).href;
 
@@ -22,6 +23,7 @@ interface NavbarProps {
   syncScrollEnabled: boolean;
   onToggleSyncScroll: () => void;
   onRefreshDiagrams: (() => void) | null;
+  onShowWhatsNew: () => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
@@ -32,6 +34,7 @@ const Navbar: React.FC<NavbarProps> = ({
   syncScrollEnabled,
   onToggleSyncScroll,
   onRefreshDiagrams,
+  onShowWhatsNew,
 }) => {
   // Dropdown states
   const [isImportDropdownOpen, setIsImportDropdownOpen] = useState(false);
@@ -207,6 +210,9 @@ const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center space-x-2">
           <img src={favicon32} alt="Logo" className="h-6 w-6" />
           <span className="text-xl font-bold">AsciiDoc Alive</span>
+          <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-blue-600/20 text-blue-300 border border-blue-500/30">
+            v{packageJson.version}
+          </span>
         </div>
 
         {/* Mobile menu toggle */}
@@ -268,6 +274,7 @@ const Navbar: React.FC<NavbarProps> = ({
             <HelpDropdown
               isOpen={isHelpDropdownOpen}
               toggleDropdown={toggleHelpDropdown}
+              onShowWhatsNew={onShowWhatsNew}
             />
           </div>
         </div>
