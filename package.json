@@ -1,7 +1,7 @@
 {
   "name": "asciidocalive",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,11 +16,9 @@
     "@codemirror/theme-one-dark": "^6.1.2",
     "@codemirror/view": "^6.36.4",
     "asciidoctor": "^3.0.4",
-    "codemirror": "^6.0.1",
+    "codemirror": "^6.0.2",
     "codemirror-asciidoc": "^2.0.1",
     "highlight.js": "^11.11.1",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^3.0.0",
     "lucide-react": "^0.477.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -40,7 +38,6 @@
     "tailwindcss": "^4.0.9",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.25.0",
-    "vite": "^6.2.0",
-    "workbox-cli": "^7.3.0"
+    "vite": "^6.2.0"
   }
 }

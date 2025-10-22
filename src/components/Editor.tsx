@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import asciidoctor from "asciidoctor";
 import CodeMirrorEditor from "./CodeMirrorEditor";
 import { EditorView } from "@codemirror/view";
 import hljs from 'highlight.js';
 import 'highlight.js/styles/default.css';
+import { renderKrokiDiagrams, clearKrokiCache } from "../utils/krokiUtils";
+import { indexedDBService } from "../utils/indexedDBService";
+
 const processor = asciidoctor();
 
 const defaultContent = `= Welcome to AsciiDoc Alive
@@ -19,6 +22,7 @@ This is a *live* AsciiDoc editor. Start typing in the left panel to see the rend
 * Line numbers
 * Dark theme
 * Export functionality
+* Diagram rendering (PlantUML, Mermaid, GraphViz, and more)
 * Clean interface
 
 [source,javascript]
@@ -54,26 +58,132 @@ This is a sample warning block.
 ====
 This is a sample important block.
 ====
+
+== Mathematical Expressions
+You can write mathematical expressions using STEM notation.
+
+=== Inline Math
+The quadratic formula is stem:[x = (-b \pm sqrt(b^2-4ac))/(2a)].
+
+Einstein's famous equation: stem:[E = mc^2].
+
+A matrix example: stem:[[[a,b],[c,d]]((n),(k))].
+
+=== Block Math
+[stem]
+++++
+\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}
+++++
+
+[stem]
+++++
+\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}
+++++
+
+[stem]
+++++
+\\begin{bmatrix}
+a & b \\\\
+c & d
+\\end{bmatrix}
+\\begin{pmatrix}
+n \\\\
+k
+\\end{pmatrix}
+++++
+
+== Diagrams with Kroki
+Create beautiful diagrams using various diagram types powered by https://kroki.io[Kroki.io].
+
+=== PlantUML Sequence Diagram
+[plantuml]
+----
+@startuml
+Alice -> Bob: Authentication Request
+Bob --> Alice: Authentication Response
+
+Alice -> Bob: Another authentication Request
+Alice <-- Bob: Another authentication Response
+@enduml
+----
+
+=== Mermaid Flowchart
+[mermaid]
+----
+graph TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great!]
+    B -->|No| D[Debug]
+    D --> B
+    C --> E[End]
+----
+
+=== GraphViz Directed Graph
+[graphviz]
+----
+digraph G {
+    rankdir=LR;
+    node [shape=box, style=rounded];
+    
+    Frontend -> Backend [label="API Request"];
+    Backend -> Database [label="Query"];
+    Database -> Backend [label="Result"];
+    Backend -> Frontend [label="Response"];
+}
+----
+
+=== Ditaa Diagram
+[ditaa]
+----
++--------+   +-------+    +-------+
+|        | --+ ditaa +--> |       |
+|  Text  |   +-------+    |diagram|
+|Document|   |!magic!|    |       |
+|     {d}|   |       |    |       |
++---+----+   +-------+    +-------+
+    :                         ^
+    |       Lots of work      |
+    +-------------------------+
+----
 `;
 
 interface EditorProps {
   isDark: boolean;
   fileContent?: string;
   onEditorReady: (getValue: () => string) => void;
+  syncScrollEnabled: boolean;
+  onRefreshDiagramsReady: (refresh: () => void) => void;
 }
 
 const Editor: React.FC<EditorProps> = ({
   isDark,
   fileContent,
   onEditorReady,
+  syncScrollEnabled,
+  onRefreshDiagramsReady,
 }) => {
-  const [content, setContent] = useState(() => {
-    const savedContent = localStorage.getItem("asciidocalivecontent");
-    return savedContent || defaultContent;
-  });
+  const [content, setContent] = useState(defaultContent);
   const [html, setHtml] = useState("");
   const [editorView, setEditorView] = useState<EditorView | null>(null);
   const [asciidoctorStyles, setAsciidoctorStyles] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Refs for scroll sync
+  const previewRef = useRef<HTMLDivElement>(null);
+  const isEditorScrollingRef = useRef(false);
+  const isPreviewScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<number | null>(null);
+
+  // Load content from IndexedDB on mount
+  useEffect(() => {
+    const loadContent = async () => {
+      const savedContent = await indexedDBService.getContent();
+      if (savedContent) {
+        setContent(savedContent);
+      }
+    };
+    loadContent();
+  }, []);
 
   useEffect(() => {
     const cssUrl = isDark
@@ -90,30 +200,60 @@ const Editor: React.FC<EditorProps> = ({
   useEffect(() => {
     if (fileContent) {
       setContent(fileContent);
-      localStorage.setItem("asciidocalivecontent", fileContent);
+      indexedDBService.setContent(fileContent);
     }
   }, [fileContent]);
 
   useEffect(() => {
-    try {
-      const converted = processor.convert(content, {
-        safe: "safe",
-        attributes: {
-          showtitle: true,
-          "source-highlighter": "highlight.js",
-        },
-      }) as string;
-      setHtml(converted);
-      setTimeout(hljs.highlightAll, 0);
-      localStorage.setItem("asciidocalivecontent", content);
-    } catch (error) {
-      console.error("Error converting AsciiDoc:", error);
-    }
+    const convertAndRender = async () => {
+      try {
+        const converted = processor.convert(content, {
+          safe: "safe",
+          attributes: {
+            showtitle: true,
+            "source-highlighter": "highlight.js",
+            stem: "latexmath",
+            experimental: true,
+          },
+        }) as string;
+        setHtml(converted);
+        
+        // Wait for DOM to update
+        setTimeout(async () => {
+          // Highlight code blocks safely
+          const previewElement = document.getElementById("editor-content");
+          if (previewElement) {
+            const codeBlocks = previewElement.querySelectorAll('pre code:not([data-highlighted])');
+            codeBlocks.forEach((block) => {
+              try {
+                hljs.highlightElement(block as HTMLElement);
+              } catch (error) {
+                // Silently ignore highlighting errors (e.g., unescaped HTML warnings)
+                // The content is already sanitized by Asciidoctor in 'safe' mode
+              }
+            });
+            
+            // Render Kroki diagrams with cache
+            await renderKrokiDiagrams(previewElement, true);
+          }
+          
+          // Trigger MathJax typesetting after content is rendered
+          if (window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise().catch((err: Error) => 
+              console.error('MathJax typeset error:', err)
+            );
+          }
+        }, 50);
+        
+        // Save content to IndexedDB
+        indexedDBService.setContent(content);
+      } catch (error) {
+        console.error("Error converting AsciiDoc:", error);
+      }
+    };
+    
+    convertAndRender();
   }, [content, isDark]);
-
-  useEffect(() => {
-    hljs.highlightAll();
-  }, []);
 
   const handleEditorCreated = useCallback(
     (view: EditorView) => {
@@ -122,6 +262,163 @@ const Editor: React.FC<EditorProps> = ({
     },
     [onEditorReady]
   );
+
+  // Expose refresh diagrams function
+  const handleRefreshDiagrams = useCallback(async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    console.log('Refreshing diagrams...');
+    
+    try {
+      // Clear the cache
+      await clearKrokiCache();
+      
+      // Re-render the current content without cache
+      const previewElement = document.getElementById("editor-content");
+      if (previewElement) {
+        await renderKrokiDiagrams(previewElement, false);
+      }
+      
+      console.log('Diagrams refreshed successfully');
+    } catch (error) {
+      console.error('Error refreshing diagrams:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing]);
+
+  // Register the refresh function with parent
+  useEffect(() => {
+    onRefreshDiagramsReady(handleRefreshDiagrams);
+  }, [onRefreshDiagramsReady, handleRefreshDiagrams]);
+
+  // Debounce function
+  const debounce = (func: Function, wait: number) => {
+    let timeout: number | null = null;
+    return (...args: any[]) => {
+      if (timeout) clearTimeout(timeout);
+      timeout = window.setTimeout(() => func(...args), wait);
+    };
+  };
+
+  // Calculate scroll percentage
+  const calculateScrollPercentage = (element: Element): number => {
+    const { scrollTop, scrollHeight, clientHeight } = element;
+    if (scrollHeight <= clientHeight) return 0;
+    return scrollTop / (scrollHeight - clientHeight);
+  };
+
+  // Apply scroll percentage to target element
+  const applyScrollPercentage = (element: Element, percentage: number) => {
+    const { scrollHeight, clientHeight } = element;
+    const maxScroll = scrollHeight - clientHeight;
+    element.scrollTop = maxScroll * percentage;
+  };
+
+  // Handle cursor change for heading navigation
+  const handleCursorChange = useCallback((_lineNumber: number, lineContent: string) => {
+    if (!syncScrollEnabled || !previewRef.current) return;
+
+    // Detect AsciiDoc heading syntax: = Heading
+    const headingMatch = lineContent.match(/^(=+)\s+(.+)$/);
+    if (headingMatch) {
+      const headingText = headingMatch[2].trim();
+      
+      // AsciiDoc converts "My Heading" to id="_my_heading"
+      // It also handles special chars and multiple spaces
+      const headingId = '_' + headingText.toLowerCase()
+        .replace(/[^\w\s-]/g, '')  // Remove special chars
+        .replace(/\s+/g, '_')       // Replace spaces with underscores
+        .replace(/_+/g, '_');       // Collapse multiple underscores
+      
+      // Try to find the heading in the preview
+      const previewElement = previewRef.current;
+      let targetElement = previewElement.querySelector(`#${CSS.escape(headingId)}`);
+      
+      // Fallback: try without the leading underscore (some cases)
+      if (!targetElement) {
+        const altId = headingId.substring(1);
+        targetElement = previewElement.querySelector(`#${CSS.escape(altId)}`);
+      }
+      
+      // Fallback: search by text content in headings
+      if (!targetElement) {
+        const headings = previewElement.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        targetElement = Array.from(headings).find(
+          h => h.textContent?.trim().toLowerCase() === headingText.toLowerCase()
+        ) || null;
+      }
+      
+      if (targetElement) {
+        // Prevent triggering preview scroll handler
+        isEditorScrollingRef.current = true;
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        setTimeout(() => {
+          isEditorScrollingRef.current = false;
+        }, 150);
+      }
+    }
+  }, [syncScrollEnabled]);
+
+  // Handle editor scroll
+  const handleEditorScroll = useCallback(
+    debounce(() => {
+      if (!syncScrollEnabled || !editorView || !previewRef.current || isPreviewScrollingRef.current) {
+        return;
+      }
+
+      isEditorScrollingRef.current = true;
+      
+      const editorScrollDom = editorView.scrollDOM;
+      const percentage = calculateScrollPercentage(editorScrollDom);
+      applyScrollPercentage(previewRef.current, percentage);
+      
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = window.setTimeout(() => {
+        isEditorScrollingRef.current = false;
+      }, 150);
+    }, 100),
+    [syncScrollEnabled, editorView]
+  );
+
+  // Handle preview scroll
+  const handlePreviewScroll = useCallback(
+    debounce(() => {
+      if (!syncScrollEnabled || !editorView || !previewRef.current || isEditorScrollingRef.current) {
+        return;
+      }
+
+      isPreviewScrollingRef.current = true;
+      
+      const percentage = calculateScrollPercentage(previewRef.current);
+      applyScrollPercentage(editorView.scrollDOM, percentage);
+      
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = window.setTimeout(() => {
+        isPreviewScrollingRef.current = false;
+      }, 150);
+    }, 100),
+    [syncScrollEnabled, editorView]
+  );
+
+  // Set up scroll event listeners
+  useEffect(() => {
+    if (!editorView || !previewRef.current || !syncScrollEnabled) return;
+
+    const editorScrollDom = editorView.scrollDOM;
+    const previewElement = previewRef.current;
+
+    editorScrollDom.addEventListener('scroll', handleEditorScroll);
+    previewElement.addEventListener('scroll', handlePreviewScroll);
+
+    return () => {
+      editorScrollDom.removeEventListener('scroll', handleEditorScroll);
+      previewElement.removeEventListener('scroll', handlePreviewScroll);
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
+  }, [editorView, syncScrollEnabled, handleEditorScroll, handlePreviewScroll]);
 
   return (
     <div
@@ -139,10 +436,12 @@ const Editor: React.FC<EditorProps> = ({
           onChange={setContent}
           isDark={isDark}
           onEditorCreated={handleEditorCreated}
+          onCursorChange={handleCursorChange}
         />
       </div>
 
       <div
+        ref={previewRef}
         className={`${
           isDark ? "bg-slate-800" : "bg-white"
         } overflow-auto asciidocalive-preview`}

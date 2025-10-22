@@ -8,6 +8,7 @@
 
 - **Editing Experience**: Real-time preview, syntax highlighting, line numbering, and dark mode.
 - **File Handling**: Import local files and GitHub and GitLab URLs; export to HTML, PDF, and AsciiDoc.
+- **Diagrams**: Render diagrams using [Kroki.io](https://kroki.io) supporting PlantUML, Mermaid, GraphViz, Ditaa, and many more diagram types.
 - **Performance & Privacy**:
 Works offline, auto-save, no registration, ads, tracking, or cookies.
 

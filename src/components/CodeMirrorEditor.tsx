@@ -18,6 +18,7 @@ interface CodeMirrorEditorProps {
   onChange: (value: string) => void;
   isDark: boolean;
   onEditorCreated: (editor: EditorView) => void;
+  onCursorChange?: (lineNumber: number, lineContent: string) => void;
 }
 
 const baseTheme = EditorView.baseTheme({
@@ -85,7 +86,11 @@ const getThemeExtensions = (isDark: boolean) =>
     ? oneDark
     : [customLightTheme, syntaxHighlighting(lightHighlightStyle)];
 
-const createExtensions = (isDark: boolean, onChange: (value: string) => void) => [
+const createExtensions = (
+  isDark: boolean, 
+  onChange: (value: string) => void,
+  onCursorChange?: (lineNumber: number, lineContent: string) => void
+) => [
   history(),
   lineNumbers(),
   highlightActiveLine(),
@@ -96,13 +101,21 @@ const createExtensions = (isDark: boolean, onChange: (value: string) => void) =>
     if (update.docChanged) {
       onChange(update.state.doc.toString());
     }
+    // Track cursor position changes
+    if (update.selectionSet && onCursorChange) {
+      const cursorPos = update.state.selection.main.head;
+      const line = update.state.doc.lineAt(cursorPos);
+      const lineNumber = line.number;
+      const lineContent = line.text;
+      onCursorChange(lineNumber, lineContent);
+    }
   }),
   baseTheme,
   getThemeExtensions(isDark),
 ];
 
 const CodeMirrorEditor = forwardRef<HTMLDivElement, CodeMirrorEditorProps>(
-  ({ initialValue, onChange, isDark, onEditorCreated }, ref) => {
+  ({ initialValue, onChange, isDark, onEditorCreated, onCursorChange }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView>();
 
@@ -112,7 +125,7 @@ const CodeMirrorEditor = forwardRef<HTMLDivElement, CodeMirrorEditorProps>(
       try {
         const state = EditorState.create({
           doc: initialValue,
-          extensions: createExtensions(isDark, onChange),
+          extensions: createExtensions(isDark, onChange, onCursorChange),
         });
 
         const view = new EditorView({
@@ -130,7 +143,7 @@ const CodeMirrorEditor = forwardRef<HTMLDivElement, CodeMirrorEditorProps>(
       } catch (error) {
         console.error('Error initializing CodeMirror:', error);
       }
-    }, [onChange, isDark, onEditorCreated]);
+    }, [onChange, isDark, onEditorCreated, onCursorChange]);
 
     // Handle theme changes
     useEffect(() => {
@@ -138,12 +151,12 @@ const CodeMirrorEditor = forwardRef<HTMLDivElement, CodeMirrorEditorProps>(
 
       try {
         viewRef.current.dispatch({
-          effects: StateEffect.reconfigure.of(createExtensions(isDark, onChange))
+          effects: StateEffect.reconfigure.of(createExtensions(isDark, onChange, onCursorChange))
         });
       } catch (error) {
         console.error('Error updating CodeMirror theme:', error);
       }
-    }, [isDark, onChange]);
+    }, [isDark, onChange, onCursorChange]);
 
     // Handle external value changes
     useEffect(() => {

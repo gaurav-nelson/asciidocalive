@@ -24,6 +24,38 @@
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/3.2.1/css/font-awesome.min.css"
         />
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [['\\(', '\\)']],
+          displayMath: [['\\[', '\\]']],
+          processEscapes: false
+        },
+        options: {
+          skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+          enableMenu: false,
+          enableSpeech: false,
+          enableBraille: false,
+          enableExplorer: false,
+          enableEnrichment: false,
+          menuOptions: {
+            settings: {
+              assistiveMml: false,
+              speech: false,
+              braille: false,
+              enrich: false
+            }
+          }
+        },
+        startup: {
+          typeset: false
+        },
+        loader: {
+          load: ['input/tex', 'output/chtml']
+        }
+      };
+    </script>
+    <script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.0.0/tex-chtml.min.js"></script>
   </head>
   <body>
     <div id="root"></div>
