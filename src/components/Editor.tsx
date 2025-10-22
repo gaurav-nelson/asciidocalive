@@ -193,6 +193,7 @@ const Editor: React.FC<EditorProps> = ({
             showtitle: true,
             "source-highlighter": "highlight.js",
             stem: "latexmath",
+            experimental: true,
           },
         }) as string;
         setHtml(converted);
