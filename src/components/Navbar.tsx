@@ -7,6 +7,7 @@ import ExportDropdown from './navbar/ExportDropdown';
 import HelpDropdown from './navbar/HelpDropdown';
 import FocusModeToggle from './navbar/FocusModeToggle';
 import SyncScrollToggle from './navbar/SyncScrollToggle';
+import RefreshDiagramsButton from './navbar/RefreshDiagramsButton';
 import Divider from './navbar/Divider';
 import useClickOutside from '../hooks/useClickOutside';
 import { exportToAsciiDoc, exportToPDF, exportToHTML } from '../utils/exportUtils';
@@ -20,6 +21,7 @@ interface NavbarProps {
   getEditorContent: (() => string) | null;
   syncScrollEnabled: boolean;
   onToggleSyncScroll: () => void;
+  onRefreshDiagrams: (() => void) | null;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
@@ -29,6 +31,7 @@ const Navbar: React.FC<NavbarProps> = ({
   getEditorContent,
   syncScrollEnabled,
   onToggleSyncScroll,
+  onRefreshDiagrams,
 }) => {
   // Dropdown states
   const [isImportDropdownOpen, setIsImportDropdownOpen] = useState(false);
@@ -254,6 +257,9 @@ const Navbar: React.FC<NavbarProps> = ({
 
           {/* Sync scroll toggle */}
           <SyncScrollToggle isSyncScrollEnabled={syncScrollEnabled} onToggle={onToggleSyncScroll} />
+
+          {/* Refresh diagrams button */}
+          <RefreshDiagramsButton onRefresh={onRefreshDiagrams} />
 
           <Divider />
 

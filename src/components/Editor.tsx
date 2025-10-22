@@ -4,7 +4,8 @@ import CodeMirrorEditor from "./CodeMirrorEditor";
 import { EditorView } from "@codemirror/view";
 import hljs from 'highlight.js';
 import 'highlight.js/styles/default.css';
-import { renderKrokiDiagrams } from "../utils/krokiUtils";
+import { renderKrokiDiagrams, clearKrokiCache } from "../utils/krokiUtils";
+import { indexedDBService } from "../utils/indexedDBService";
 
 const processor = asciidoctor();
 
@@ -151,6 +152,7 @@ interface EditorProps {
   fileContent?: string;
   onEditorReady: (getValue: () => string) => void;
   syncScrollEnabled: boolean;
+  onRefreshDiagramsReady: (refresh: () => void) => void;
 }
 
 const Editor: React.FC<EditorProps> = ({
@@ -158,20 +160,30 @@ const Editor: React.FC<EditorProps> = ({
   fileContent,
   onEditorReady,
   syncScrollEnabled,
+  onRefreshDiagramsReady,
 }) => {
-  const [content, setContent] = useState(() => {
-    const savedContent = localStorage.getItem("asciidocalivecontent");
-    return savedContent || defaultContent;
-  });
+  const [content, setContent] = useState(defaultContent);
   const [html, setHtml] = useState("");
   const [editorView, setEditorView] = useState<EditorView | null>(null);
   const [asciidoctorStyles, setAsciidoctorStyles] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Refs for scroll sync
   const previewRef = useRef<HTMLDivElement>(null);
   const isEditorScrollingRef = useRef(false);
   const isPreviewScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<number | null>(null);
+
+  // Load content from IndexedDB on mount
+  useEffect(() => {
+    const loadContent = async () => {
+      const savedContent = await indexedDBService.getContent();
+      if (savedContent) {
+        setContent(savedContent);
+      }
+    };
+    loadContent();
+  }, []);
 
   useEffect(() => {
     const cssUrl = isDark
@@ -188,7 +200,7 @@ const Editor: React.FC<EditorProps> = ({
   useEffect(() => {
     if (fileContent) {
       setContent(fileContent);
-      localStorage.setItem("asciidocalivecontent", fileContent);
+      indexedDBService.setContent(fileContent);
     }
   }, [fileContent]);
 
@@ -221,8 +233,8 @@ const Editor: React.FC<EditorProps> = ({
               }
             });
             
-            // Render Kroki diagrams
-            await renderKrokiDiagrams(previewElement);
+            // Render Kroki diagrams with cache
+            await renderKrokiDiagrams(previewElement, true);
           }
           
           // Trigger MathJax typesetting after content is rendered
@@ -233,7 +245,8 @@ const Editor: React.FC<EditorProps> = ({
           }
         }, 50);
         
-        localStorage.setItem("asciidocalivecontent", content);
+        // Save content to IndexedDB
+        indexedDBService.setContent(content);
       } catch (error) {
         console.error("Error converting AsciiDoc:", error);
       }
@@ -249,6 +262,36 @@ const Editor: React.FC<EditorProps> = ({
     },
     [onEditorReady]
   );
+
+  // Expose refresh diagrams function
+  const handleRefreshDiagrams = useCallback(async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    console.log('Refreshing diagrams...');
+    
+    try {
+      // Clear the cache
+      await clearKrokiCache();
+      
+      // Re-render the current content without cache
+      const previewElement = document.getElementById("editor-content");
+      if (previewElement) {
+        await renderKrokiDiagrams(previewElement, false);
+      }
+      
+      console.log('Diagrams refreshed successfully');
+    } catch (error) {
+      console.error('Error refreshing diagrams:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing]);
+
+  // Register the refresh function with parent
+  useEffect(() => {
+    onRefreshDiagramsReady(handleRefreshDiagrams);
+  }, [onRefreshDiagramsReady, handleRefreshDiagrams]);
 
   // Debounce function
   const debounce = (func: Function, wait: number) => {

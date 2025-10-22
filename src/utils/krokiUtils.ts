@@ -1,7 +1,19 @@
 // Kroki diagram rendering utility for browser environments
 // Supports PlantUML, Mermaid, GraphViz, Ditaa, and more via Kroki.io API
 
+import { indexedDBService } from './indexedDBService';
+
 const KROKI_SERVER = 'https://kroki.io';
+
+// Simple DJB2 hash function for content hashing
+function hashContent(str: string): string {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i); // hash * 33 + c
+  }
+  // Convert to positive hex string
+  return (hash >>> 0).toString(16);
+}
 
 interface DiagramBlock {
   element: Element;
@@ -105,13 +117,26 @@ function extractDiagramBlocks(container: HTMLElement): DiagramBlock[] {
   return blocks;
 }
 
-// Render a single diagram using Kroki API
-async function renderDiagram(type: string, content: string): Promise<string> {
+// Render a single diagram using Kroki API with caching
+async function renderDiagram(type: string, content: string, useCache: boolean = true): Promise<string> {
   try {
+    // Create a unique hash for this diagram (type + content)
+    const cacheKey = hashContent(type + content);
+    
+    // Check cache first if enabled
+    if (useCache) {
+      const cachedSvg = await indexedDBService.getCachedDiagram(cacheKey);
+      if (cachedSvg) {
+        console.log(`Using cached diagram for ${type} (hash: ${cacheKey})`);
+        return cachedSvg;
+      }
+    }
+    
     // Use POST request with plain text body (as per Kroki.io documentation)
     // Note: PlantUML content should INCLUDE @startuml/@enduml tags
     const url = `${KROKI_SERVER}/${type}/svg`;
     
+    console.log(`Fetching diagram from Kroki API: ${type}`);
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -125,7 +150,12 @@ async function renderDiagram(type: string, content: string): Promise<string> {
       throw new Error(`Kroki API error (${response.status}): ${errorText || response.statusText}`);
     }
     
-    return await response.text();
+    const svg = await response.text();
+    
+    // Cache the successful result
+    await indexedDBService.setCachedDiagram(cacheKey, svg);
+    
+    return svg;
   } catch (error) {
     console.error(`Error rendering ${type} diagram:`, error);
     // Return error placeholder
@@ -137,14 +167,14 @@ async function renderDiagram(type: string, content: string): Promise<string> {
 }
 
 // Main function to find and render all Kroki diagrams in the HTML
-export async function renderKrokiDiagrams(container: HTMLElement): Promise<void> {
+export async function renderKrokiDiagrams(container: HTMLElement, useCache: boolean = true): Promise<void> {
   const blocks = extractDiagramBlocks(container);
   
   if (blocks.length === 0) return;
   
   // Render all diagrams in parallel
   const renderPromises = blocks.map(async (block) => {
-    const svg = await renderDiagram(block.type, block.content);
+    const svg = await renderDiagram(block.type, block.content, useCache);
     
     // Create a wrapper div for the rendered diagram
     const wrapper = document.createElement('div');
@@ -160,5 +190,11 @@ export async function renderKrokiDiagrams(container: HTMLElement): Promise<void>
   });
   
   await Promise.all(renderPromises);
+}
+
+// Clear the Kroki diagram cache
+export async function clearKrokiCache(): Promise<void> {
+  await indexedDBService.clearDiagramCache();
+  console.log('Kroki diagram cache cleared');
 }
 
