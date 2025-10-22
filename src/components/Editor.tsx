@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import asciidoctor from "asciidoctor";
 import CodeMirrorEditor from "./CodeMirrorEditor";
 import { EditorView } from "@codemirror/view";
@@ -150,12 +150,14 @@ interface EditorProps {
   isDark: boolean;
   fileContent?: string;
   onEditorReady: (getValue: () => string) => void;
+  syncScrollEnabled: boolean;
 }
 
 const Editor: React.FC<EditorProps> = ({
   isDark,
   fileContent,
   onEditorReady,
+  syncScrollEnabled,
 }) => {
   const [content, setContent] = useState(() => {
     const savedContent = localStorage.getItem("asciidocalivecontent");
@@ -164,6 +166,12 @@ const Editor: React.FC<EditorProps> = ({
   const [html, setHtml] = useState("");
   const [editorView, setEditorView] = useState<EditorView | null>(null);
   const [asciidoctorStyles, setAsciidoctorStyles] = useState("");
+  
+  // Refs for scroll sync
+  const previewRef = useRef<HTMLDivElement>(null);
+  const isEditorScrollingRef = useRef(false);
+  const isPreviewScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const cssUrl = isDark
@@ -242,6 +250,133 @@ const Editor: React.FC<EditorProps> = ({
     [onEditorReady]
   );
 
+  // Debounce function
+  const debounce = (func: Function, wait: number) => {
+    let timeout: number | null = null;
+    return (...args: any[]) => {
+      if (timeout) clearTimeout(timeout);
+      timeout = window.setTimeout(() => func(...args), wait);
+    };
+  };
+
+  // Calculate scroll percentage
+  const calculateScrollPercentage = (element: Element): number => {
+    const { scrollTop, scrollHeight, clientHeight } = element;
+    if (scrollHeight <= clientHeight) return 0;
+    return scrollTop / (scrollHeight - clientHeight);
+  };
+
+  // Apply scroll percentage to target element
+  const applyScrollPercentage = (element: Element, percentage: number) => {
+    const { scrollHeight, clientHeight } = element;
+    const maxScroll = scrollHeight - clientHeight;
+    element.scrollTop = maxScroll * percentage;
+  };
+
+  // Handle cursor change for heading navigation
+  const handleCursorChange = useCallback((_lineNumber: number, lineContent: string) => {
+    if (!syncScrollEnabled || !previewRef.current) return;
+
+    // Detect AsciiDoc heading syntax: = Heading
+    const headingMatch = lineContent.match(/^(=+)\s+(.+)$/);
+    if (headingMatch) {
+      const headingText = headingMatch[2].trim();
+      
+      // AsciiDoc converts "My Heading" to id="_my_heading"
+      // It also handles special chars and multiple spaces
+      const headingId = '_' + headingText.toLowerCase()
+        .replace(/[^\w\s-]/g, '')  // Remove special chars
+        .replace(/\s+/g, '_')       // Replace spaces with underscores
+        .replace(/_+/g, '_');       // Collapse multiple underscores
+      
+      // Try to find the heading in the preview
+      const previewElement = previewRef.current;
+      let targetElement = previewElement.querySelector(`#${CSS.escape(headingId)}`);
+      
+      // Fallback: try without the leading underscore (some cases)
+      if (!targetElement) {
+        const altId = headingId.substring(1);
+        targetElement = previewElement.querySelector(`#${CSS.escape(altId)}`);
+      }
+      
+      // Fallback: search by text content in headings
+      if (!targetElement) {
+        const headings = previewElement.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        targetElement = Array.from(headings).find(
+          h => h.textContent?.trim().toLowerCase() === headingText.toLowerCase()
+        ) || null;
+      }
+      
+      if (targetElement) {
+        // Prevent triggering preview scroll handler
+        isEditorScrollingRef.current = true;
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        setTimeout(() => {
+          isEditorScrollingRef.current = false;
+        }, 150);
+      }
+    }
+  }, [syncScrollEnabled]);
+
+  // Handle editor scroll
+  const handleEditorScroll = useCallback(
+    debounce(() => {
+      if (!syncScrollEnabled || !editorView || !previewRef.current || isPreviewScrollingRef.current) {
+        return;
+      }
+
+      isEditorScrollingRef.current = true;
+      
+      const editorScrollDom = editorView.scrollDOM;
+      const percentage = calculateScrollPercentage(editorScrollDom);
+      applyScrollPercentage(previewRef.current, percentage);
+      
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = window.setTimeout(() => {
+        isEditorScrollingRef.current = false;
+      }, 150);
+    }, 100),
+    [syncScrollEnabled, editorView]
+  );
+
+  // Handle preview scroll
+  const handlePreviewScroll = useCallback(
+    debounce(() => {
+      if (!syncScrollEnabled || !editorView || !previewRef.current || isEditorScrollingRef.current) {
+        return;
+      }
+
+      isPreviewScrollingRef.current = true;
+      
+      const percentage = calculateScrollPercentage(previewRef.current);
+      applyScrollPercentage(editorView.scrollDOM, percentage);
+      
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = window.setTimeout(() => {
+        isPreviewScrollingRef.current = false;
+      }, 150);
+    }, 100),
+    [syncScrollEnabled, editorView]
+  );
+
+  // Set up scroll event listeners
+  useEffect(() => {
+    if (!editorView || !previewRef.current || !syncScrollEnabled) return;
+
+    const editorScrollDom = editorView.scrollDOM;
+    const previewElement = previewRef.current;
+
+    editorScrollDom.addEventListener('scroll', handleEditorScroll);
+    previewElement.addEventListener('scroll', handlePreviewScroll);
+
+    return () => {
+      editorScrollDom.removeEventListener('scroll', handleEditorScroll);
+      previewElement.removeEventListener('scroll', handlePreviewScroll);
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
+  }, [editorView, syncScrollEnabled, handleEditorScroll, handlePreviewScroll]);
+
   return (
     <div
       className={`${
@@ -258,10 +393,12 @@ const Editor: React.FC<EditorProps> = ({
           onChange={setContent}
           isDark={isDark}
           onEditorCreated={handleEditorCreated}
+          onCursorChange={handleCursorChange}
         />
       </div>
 
       <div
+        ref={previewRef}
         className={`${
           isDark ? "bg-slate-800" : "bg-white"
         } overflow-auto asciidocalive-preview`}

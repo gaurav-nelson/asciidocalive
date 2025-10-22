@@ -6,6 +6,7 @@ import ImportDropdown from './navbar/ImportDropdown';
 import ExportDropdown from './navbar/ExportDropdown';
 import HelpDropdown from './navbar/HelpDropdown';
 import FocusModeToggle from './navbar/FocusModeToggle';
+import SyncScrollToggle from './navbar/SyncScrollToggle';
 import Divider from './navbar/Divider';
 import useClickOutside from '../hooks/useClickOutside';
 import { exportToAsciiDoc, exportToPDF, exportToHTML } from '../utils/exportUtils';
@@ -17,6 +18,8 @@ interface NavbarProps {
   onToggleTheme: () => void;
   onFileLoad: (content: string) => void;
   getEditorContent: (() => string) | null;
+  syncScrollEnabled: boolean;
+  onToggleSyncScroll: () => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
@@ -24,6 +27,8 @@ const Navbar: React.FC<NavbarProps> = ({
   onToggleTheme,
   onFileLoad,
   getEditorContent,
+  syncScrollEnabled,
+  onToggleSyncScroll,
 }) => {
   // Dropdown states
   const [isImportDropdownOpen, setIsImportDropdownOpen] = useState(false);
@@ -246,6 +251,9 @@ const Navbar: React.FC<NavbarProps> = ({
 
           {/* Focus mode toggle */}
           <FocusModeToggle isFocusMode={isFocusMode} onToggle={toggleFocusMode} />
+
+          {/* Sync scroll toggle */}
+          <SyncScrollToggle isSyncScrollEnabled={syncScrollEnabled} onToggle={onToggleSyncScroll} />
 
           <Divider />
 

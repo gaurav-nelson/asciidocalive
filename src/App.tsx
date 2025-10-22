@@ -7,9 +7,21 @@ const App: React.FC = () => {
   const [isDark, setIsDark] = useState(false);
   const [fileContent, setFileContent] = useState<string | undefined>(undefined);
   const [getEditorContent, setGetEditorContent] = useState<(() => string) | null>(null);
+  const [syncScrollEnabled, setSyncScrollEnabled] = useState(() => {
+    const saved = localStorage.getItem('syncScrollEnabled');
+    return saved !== null ? JSON.parse(saved) : false;
+  });
 
   const handleToggleTheme = () => {
     setIsDark(!isDark);
+  };
+
+  const handleToggleSyncScroll = () => {
+    setSyncScrollEnabled((prev: boolean) => {
+      const newValue = !prev;
+      localStorage.setItem('syncScrollEnabled', JSON.stringify(newValue));
+      return newValue;
+    });
   };
 
   const handleFileLoad = (content: string) => {
@@ -27,11 +39,14 @@ const App: React.FC = () => {
         onToggleTheme={handleToggleTheme}
         onFileLoad={handleFileLoad}
         getEditorContent={getEditorContent}
+        syncScrollEnabled={syncScrollEnabled}
+        onToggleSyncScroll={handleToggleSyncScroll}
       />
       <Editor
         isDark={isDark}
         fileContent={fileContent}
         onEditorReady={handleEditorReady}
+        syncScrollEnabled={syncScrollEnabled}
       />
     </Suspense>
   );
