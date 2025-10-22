@@ -27,17 +27,5 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>
 );
 
-// Service worker registration is handled by vite-plugin-pwa
-// Only register in production mode
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(
-      (registration) => {
-        console.log('SW registered: ', registration);
-      },
-      (registrationError) => {
-        console.log('SW registration failed: ', registrationError);
-      }
-    );
-  });
-}
+// Service worker registration is automatically handled by vite-plugin-pwa
+// The registerType: 'autoUpdate' in vite.config.ts ensures automatic updates
