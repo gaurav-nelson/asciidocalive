@@ -54,6 +54,39 @@ This is a sample warning block.
 ====
 This is a sample important block.
 ====
+
+== Mathematical Expressions
+You can write mathematical expressions using STEM notation.
+
+=== Inline Math
+The quadratic formula is stem:[x = (-b \pm sqrt(b^2-4ac))/(2a)].
+
+Einstein's famous equation: stem:[E = mc^2].
+
+A matrix example: stem:[[[a,b],[c,d]]((n),(k))].
+
+=== Block Math
+[stem]
+++++
+\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}
+++++
+
+[stem]
+++++
+\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}
+++++
+
+[stem]
+++++
+\\begin{bmatrix}
+a & b \\\\
+c & d
+\\end{bmatrix}
+\\begin{pmatrix}
+n \\\\
+k
+\\end{pmatrix}
+++++
 `;
 
 interface EditorProps {
@@ -101,10 +134,21 @@ const Editor: React.FC<EditorProps> = ({
         attributes: {
           showtitle: true,
           "source-highlighter": "highlight.js",
+          stem: "latexmath",
         },
       }) as string;
       setHtml(converted);
       setTimeout(hljs.highlightAll, 0);
+      
+      // Trigger MathJax typesetting after content is rendered
+      setTimeout(() => {
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise().catch((err: Error) => 
+            console.error('MathJax typeset error:', err)
+          );
+        }
+      }, 100);
+      
       localStorage.setItem("asciidocalivecontent", content);
     } catch (error) {
       console.error("Error converting AsciiDoc:", error);
