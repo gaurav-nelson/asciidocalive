@@ -4,6 +4,8 @@ import CodeMirrorEditor from "./CodeMirrorEditor";
 import { EditorView } from "@codemirror/view";
 import hljs from 'highlight.js';
 import 'highlight.js/styles/default.css';
+import { renderKrokiDiagrams } from "../utils/krokiUtils";
+
 const processor = asciidoctor();
 
 const defaultContent = `= Welcome to AsciiDoc Alive
@@ -19,6 +21,7 @@ This is a *live* AsciiDoc editor. Start typing in the left panel to see the rend
 * Line numbers
 * Dark theme
 * Export functionality
+* Diagram rendering (PlantUML, Mermaid, GraphViz, and more)
 * Clean interface
 
 [source,javascript]
@@ -87,6 +90,60 @@ n \\\\
 k
 \\end{pmatrix}
 ++++
+
+== Diagrams with Kroki
+Create beautiful diagrams using various diagram types powered by https://kroki.io[Kroki.io].
+
+=== PlantUML Sequence Diagram
+[plantuml]
+----
+@startuml
+Alice -> Bob: Authentication Request
+Bob --> Alice: Authentication Response
+
+Alice -> Bob: Another authentication Request
+Alice <-- Bob: Another authentication Response
+@enduml
+----
+
+=== Mermaid Flowchart
+[mermaid]
+----
+graph TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great!]
+    B -->|No| D[Debug]
+    D --> B
+    C --> E[End]
+----
+
+=== GraphViz Directed Graph
+[graphviz]
+----
+digraph G {
+    rankdir=LR;
+    node [shape=box, style=rounded];
+    
+    Frontend -> Backend [label="API Request"];
+    Backend -> Database [label="Query"];
+    Database -> Backend [label="Result"];
+    Backend -> Frontend [label="Response"];
+}
+----
+
+=== Ditaa Diagram
+[ditaa]
+----
++--------+   +-------+    +-------+
+|        | --+ ditaa +--> |       |
+|  Text  |   +-------+    |diagram|
+|Document|   |!magic!|    |       |
+|     {d}|   |       |    |       |
++---+----+   +-------+    +-------+
+    :                         ^
+    |       Lots of work      |
+    +-------------------------+
+----
 `;
 
 interface EditorProps {
@@ -128,36 +185,53 @@ const Editor: React.FC<EditorProps> = ({
   }, [fileContent]);
 
   useEffect(() => {
-    try {
-      const converted = processor.convert(content, {
-        safe: "safe",
-        attributes: {
-          showtitle: true,
-          "source-highlighter": "highlight.js",
-          stem: "latexmath",
-        },
-      }) as string;
-      setHtml(converted);
-      setTimeout(hljs.highlightAll, 0);
-      
-      // Trigger MathJax typesetting after content is rendered
-      setTimeout(() => {
-        if (window.MathJax && window.MathJax.typesetPromise) {
-          window.MathJax.typesetPromise().catch((err: Error) => 
-            console.error('MathJax typeset error:', err)
-          );
-        }
-      }, 100);
-      
-      localStorage.setItem("asciidocalivecontent", content);
-    } catch (error) {
-      console.error("Error converting AsciiDoc:", error);
-    }
+    const convertAndRender = async () => {
+      try {
+        const converted = processor.convert(content, {
+          safe: "safe",
+          attributes: {
+            showtitle: true,
+            "source-highlighter": "highlight.js",
+            stem: "latexmath",
+          },
+        }) as string;
+        setHtml(converted);
+        
+        // Wait for DOM to update
+        setTimeout(async () => {
+          // Highlight code blocks safely
+          const previewElement = document.getElementById("editor-content");
+          if (previewElement) {
+            const codeBlocks = previewElement.querySelectorAll('pre code:not([data-highlighted])');
+            codeBlocks.forEach((block) => {
+              try {
+                hljs.highlightElement(block as HTMLElement);
+              } catch (error) {
+                // Silently ignore highlighting errors (e.g., unescaped HTML warnings)
+                // The content is already sanitized by Asciidoctor in 'safe' mode
+              }
+            });
+            
+            // Render Kroki diagrams
+            await renderKrokiDiagrams(previewElement);
+          }
+          
+          // Trigger MathJax typesetting after content is rendered
+          if (window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise().catch((err: Error) => 
+              console.error('MathJax typeset error:', err)
+            );
+          }
+        }, 50);
+        
+        localStorage.setItem("asciidocalivecontent", content);
+      } catch (error) {
+        console.error("Error converting AsciiDoc:", error);
+      }
+    };
+    
+    convertAndRender();
   }, [content, isDark]);
-
-  useEffect(() => {
-    hljs.highlightAll();
-  }, []);
 
   const handleEditorCreated = useCallback(
     (view: EditorView) => {
