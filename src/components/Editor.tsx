@@ -4,7 +4,7 @@ import CodeMirrorEditor from "./CodeMirrorEditor";
 import { EditorView } from "@codemirror/view";
 import hljs from 'highlight.js';
 import 'highlight.js/styles/default.css';
-import { renderKrokiDiagrams, clearKrokiCache } from "../utils/krokiUtils";
+import { processKrokiDiagramsInHtml, clearKrokiCache } from "../utils/krokiUtils";
 import { indexedDBService } from "../utils/indexedDBService";
 
 const processor = asciidoctor();
@@ -167,7 +167,10 @@ const Editor: React.FC<EditorProps> = ({
   const [editorView, setEditorView] = useState<EditorView | null>(null);
   const [asciidoctorStyles, setAsciidoctorStyles] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+
+  // Track render version to discard stale async diagram results
+  const renderVersionRef = useRef(0);
+
   // Refs for scroll sync
   const previewRef = useRef<HTMLDivElement>(null);
   const isEditorScrollingRef = useRef(false);
@@ -205,6 +208,9 @@ const Editor: React.FC<EditorProps> = ({
   }, [fileContent]);
 
   useEffect(() => {
+    // Increment render version so stale async results are discarded
+    const currentVersion = ++renderVersionRef.current;
+
     const convertAndRender = async () => {
       try {
         const converted = processor.convert(content, {
@@ -216,11 +222,20 @@ const Editor: React.FC<EditorProps> = ({
             experimental: true,
           },
         }) as string;
-        setHtml(converted);
-        
-        // Wait for DOM to update
-        setTimeout(async () => {
-          // Highlight code blocks safely
+
+        // Process Kroki diagrams in the HTML string (not in the DOM)
+        // so React always receives the final HTML with diagrams baked in
+        const htmlWithDiagrams = await processKrokiDiagramsInHtml(converted, true);
+
+        // Discard result if content has changed while we were fetching diagrams
+        if (renderVersionRef.current !== currentVersion) return;
+
+        setHtml(htmlWithDiagrams);
+
+        // Wait for DOM to update, then highlight code and typeset math
+        setTimeout(() => {
+          if (renderVersionRef.current !== currentVersion) return;
+
           const previewElement = document.getElementById("editor-content");
           if (previewElement) {
             const codeBlocks = previewElement.querySelectorAll('pre code:not([data-highlighted])');
@@ -228,30 +243,26 @@ const Editor: React.FC<EditorProps> = ({
               try {
                 hljs.highlightElement(block as HTMLElement);
               } catch (error) {
-                // Silently ignore highlighting errors (e.g., unescaped HTML warnings)
-                // The content is already sanitized by Asciidoctor in 'safe' mode
+                // Silently ignore highlighting errors
               }
             });
-            
-            // Render Kroki diagrams with cache
-            await renderKrokiDiagrams(previewElement, true);
           }
-          
+
           // Trigger MathJax typesetting after content is rendered
           if (window.MathJax && window.MathJax.typesetPromise) {
-            window.MathJax.typesetPromise().catch((err: Error) => 
+            window.MathJax.typesetPromise().catch((err: Error) =>
               console.error('MathJax typeset error:', err)
             );
           }
         }, 50);
-        
+
         // Save content to IndexedDB
         indexedDBService.setContent(content);
       } catch (error) {
         console.error("Error converting AsciiDoc:", error);
       }
     };
-    
+
     convertAndRender();
   }, [content, isDark]);
 
@@ -266,27 +277,35 @@ const Editor: React.FC<EditorProps> = ({
   // Expose refresh diagrams function
   const handleRefreshDiagrams = useCallback(async () => {
     if (isRefreshing) return;
-    
+
     setIsRefreshing(true);
     console.log('Refreshing diagrams...');
-    
+
     try {
       // Clear the cache
       await clearKrokiCache();
-      
-      // Re-render the current content without cache
-      const previewElement = document.getElementById("editor-content");
-      if (previewElement) {
-        await renderKrokiDiagrams(previewElement, false);
-      }
-      
+
+      // Re-convert and re-render with fresh diagram fetches
+      const converted = processor.convert(content, {
+        safe: "safe",
+        attributes: {
+          showtitle: true,
+          "source-highlighter": "highlight.js",
+          stem: "latexmath",
+          experimental: true,
+        },
+      }) as string;
+
+      const htmlWithDiagrams = await processKrokiDiagramsInHtml(converted, false);
+      setHtml(htmlWithDiagrams);
+
       console.log('Diagrams refreshed successfully');
     } catch (error) {
       console.error('Error refreshing diagrams:', error);
     } finally {
       setIsRefreshing(false);
     }
-  }, [isRefreshing]);
+  }, [isRefreshing, content]);
 
   // Register the refresh function with parent
   useEffect(() => {
