@@ -169,27 +169,48 @@ async function renderDiagram(type: string, content: string, useCache: boolean = 
 // Main function to find and render all Kroki diagrams in the HTML
 export async function renderKrokiDiagrams(container: HTMLElement, useCache: boolean = true): Promise<void> {
   const blocks = extractDiagramBlocks(container);
-  
+
   if (blocks.length === 0) return;
-  
+
   // Render all diagrams in parallel
   const renderPromises = blocks.map(async (block) => {
     const svg = await renderDiagram(block.type, block.content, useCache);
-    
+
     // Create a wrapper div for the rendered diagram
     const wrapper = document.createElement('div');
     wrapper.className = 'imageblock kroki-diagram';
-    wrapper.innerHTML = `
-      <div class="content">
-        ${svg}
-      </div>
-    `;
-    
+    // SVG content comes from the Kroki API — same trust boundary as the existing code
+    wrapper.innerHTML = `<div class="content">${svg}</div>`;
+
     // Replace the code block with the rendered diagram
     block.element.replaceWith(wrapper);
   });
-  
+
   await Promise.all(renderPromises);
+}
+
+// Process diagrams in an HTML string and return the updated HTML with rendered diagrams.
+// This avoids mutating React-controlled DOM by operating on a detached document.
+export async function processKrokiDiagramsInHtml(html: string, useCache: boolean = true): Promise<string> {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div id="__kroki_root">${html}</div>`, 'text/html');
+  const container = doc.getElementById('__kroki_root')!;
+
+  const blocks = extractDiagramBlocks(container);
+  if (blocks.length === 0) return html;
+
+  // Render all diagrams in parallel
+  const renderPromises = blocks.map(async (block) => {
+    const svg = await renderDiagram(block.type, block.content, useCache);
+    const wrapper = doc.createElement('div');
+    wrapper.className = 'imageblock kroki-diagram';
+    // SVG content comes from the Kroki API — same trust boundary as the existing code
+    wrapper.innerHTML = `<div class="content">${svg}</div>`;
+    block.element.replaceWith(wrapper);
+  });
+
+  await Promise.all(renderPromises);
+  return container.innerHTML;
 }
 
 // Clear the Kroki diagram cache
