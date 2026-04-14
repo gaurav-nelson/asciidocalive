@@ -7,7 +7,7 @@ interface HelpDropdownProps {
   onShowWhatsNew: () => void;
 }
 
-const docsWriterLogo = new URL('../../assets/docswriter.png.webp', import.meta.url).href;
+const draftviewLogo = new URL('../../assets/draftview.png', import.meta.url).href;
 
 const HelpDropdown: React.FC<HelpDropdownProps> = ({ isOpen, toggleDropdown, onShowWhatsNew }) => {
   return (
@@ -47,16 +47,16 @@ const HelpDropdown: React.FC<HelpDropdownProps> = ({ isOpen, toggleDropdown, onS
             <span>GitHub</span>
           </a>
 
-          {/* DocsWriter link */}
+          {/* DraftView link */}
           <a
-            href="https://www.docswriter.com"
+            href="https://www.draftview.app"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center space-x-2 px-4 py-2 text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-            title="Visit DocsWriter"
+            title="Visit DraftView"
           >
-            <img src={docsWriterLogo} alt="DocsWriter Logo" className="h-4 w-8" />
-            <span>DocsWriter</span>
+            <img src={draftviewLogo} alt="DraftView Logo" className="h-4 w-4" />
+            <span>DraftView</span>
           </a>
         </div>
       )}

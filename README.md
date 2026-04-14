@@ -1,6 +1,6 @@
 # AsciiDoc Alive
 
-[AsciiDoc Alive](https://asciidocalive.docswriter.com/) is a live AsciiDoc editor with real-time preview, syntax highlighting, and export functionality.
+[AsciiDoc Alive](https://asciidocalive.draftview.app/) is a live AsciiDoc editor with real-time preview, syntax highlighting, and export functionality.
 
 <img src="https://pouch.jumpshare.com/preview/TsFv_3rv1pq6NLaalepB21_SMGZXkfyoEh2Tf3qQumMjIBR_XhpJCFvJYxL8fz88w2o-pWOHAm5JZ2gw0jVckD0NrL4qcEtP0zpj-Ewfwug" style="image-rendering:-webkit-optimize-contrast;">
 
