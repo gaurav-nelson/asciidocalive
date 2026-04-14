@@ -27,5 +27,10 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>
 );
 
-// Service worker registration is automatically handled by vite-plugin-pwa
-// The registerType: 'autoUpdate' in vite.config.ts ensures automatic updates
+// When a new service worker takes control, reload the page to serve fresh assets.
+// Works in tandem with registerType: 'autoUpdate', skipWaiting: true, and clientsClaim: true.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
+  });
+}

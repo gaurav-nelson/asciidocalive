@@ -269,6 +269,18 @@ const Navbar: React.FC<NavbarProps> = ({
 
           <Divider />
 
+          {/* DraftView CTA */}
+          <a
+            href="https://draftview.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium text-blue-300 border border-blue-500/40 hover:border-blue-400 hover:text-blue-200 transition-colors whitespace-nowrap"
+            title="Review your docs with stakeholders — no GitHub account needed"
+          >
+            Review in DraftView
+            <span aria-hidden="true">→</span>
+          </a>
+
           {/* Help dropdown */}
           <div ref={helpDropdownRef}>
             <HelpDropdown

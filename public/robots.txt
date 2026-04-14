@@ -6,4 +6,4 @@ Disallow: /build/
 Disallow: /private/
 Allow: /
 
-Sitemap: https://asciidocalive.docswriter.com/sitemap.xml
+Sitemap: https://asciidocalive.draftview.app/sitemap.xml

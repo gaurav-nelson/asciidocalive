@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, ScrollText, Keyboard, Network, Calculator, Sparkles, Heart, Star } from 'lucide-react';
+import { Database, ScrollText, Network, Calculator, Sparkles, Star, ArrowRight } from 'lucide-react';
 
 interface WhatsNewModalProps {
   version: string;
@@ -18,17 +18,12 @@ const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ version, onClose, isDark 
     {
       icon: <Database className="w-6 h-6 text-blue-500" />,
       title: 'IndexedDB & Caching',
-      description: 'Migrated from localStorage with intelligent Kroki diagram caching for better performance',
+      description: 'Migrated from localStorage with intelligent Kroki diagram caching',
     },
     {
       icon: <ScrollText className="w-6 h-6 text-green-500" />,
       title: 'Synchronized Scrolling',
       description: 'Editor and preview now scroll together seamlessly for better navigation',
-    },
-    {
-      icon: <Keyboard className="w-6 h-6 text-purple-500" />,
-      title: 'Enhanced Editor',
-      description: 'Experimental support for keyboard, button, and menu UI previews',
     },
     {
       icon: <Network className="w-6 h-6 text-orange-500" />,
@@ -97,43 +92,43 @@ const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ version, onClose, isDark 
           ))}
         </div>
 
-        {/* Support Section */}
+        {/* DraftView CTA Section */}
         <div className="px-6 pb-6">
           <div
             className={`p-5 rounded-lg border-2 ${
               isDark
-                ? 'bg-gradient-to-br from-pink-900/20 to-purple-900/20 border-pink-500/30'
-                : 'bg-gradient-to-br from-pink-50 to-purple-50 border-pink-200'
+                ? 'bg-gradient-to-br from-blue-900/20 to-purple-900/20 border-blue-500/30'
+                : 'bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200'
             }`}
           >
             <div className="flex items-start gap-3 mb-4">
-              <Heart className={`w-6 h-6 ${isDark ? 'text-pink-400' : 'text-pink-500'} flex-shrink-0 mt-1`} />
+              <Sparkles className={`w-6 h-6 ${isDark ? 'text-blue-400' : 'text-blue-500'} flex-shrink-0 mt-1`} />
               <div>
                 <h3 className="font-semibold text-lg mb-2">
-                  Enjoying AsciiDocAlive?
+                  Enjoying AsciiDoc Alive?
                 </h3>
                 <p
                   className={`text-sm mb-4 ${
                     isDark ? 'text-gray-300' : 'text-gray-700'
                   }`}
                 >
-                  This project is built with ❤️ and maintained in my free time. Your support helps keep it alive and growing! Thank you for using it!
+                  Once your preview looks good, get it reviewed by stakeholders with DraftView. No GitHub account needed for reviewers.
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
               <a
-                href="https://liberapay.com/gaurav-nelson"
+                href="https://draftview.app"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all transform hover:scale-105 shadow-md ${
                   isDark
-                    ? 'bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white'
-                    : 'bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white'
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
+                    : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white'
                 }`}
               >
-                <Heart className="w-4 h-4" />
-                <span>Buy me a coffee</span>
+                <ArrowRight className="w-4 h-4" />
+                <span>Try DraftView free</span>
               </a>
               <a
                 href="https://github.com/gaurav-nelson/asciidocalive"
