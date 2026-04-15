@@ -5,6 +5,40 @@ import { indexedDBService } from './indexedDBService';
 
 const KROKI_SERVER = 'https://kroki.io';
 
+const DIAGRAM_TYPES = [
+  'plantuml', 'mermaid', 'graphviz', 'ditaa', 'blockdiag', 'seqdiag',
+  'actdiag', 'nwdiag', 'packetdiag', 'rackdiag', 'c4plantuml', 'erd',
+  'excalidraw', 'pikchr', 'structurizr', 'vega', 'vegalite', 'wavedrom',
+  'bpmn', 'bytefield', 'svgbob', 'd2', 'dbml', 'nomnoml'
+];
+
+// Preprocess AsciiDoc source to convert [ditaa], [plantuml], etc. to [source,ditaa]
+// so asciidoctor.js produces proper data-lang attributes for diagram detection.
+// Handles all common AsciiDoc attribute formats:
+//   [ditaa]  [ditaa, "title"]  ["ditaa", "title", "svg"]
+//   [plantuml, id, png]  [shaape, "id", "svg", width=80%]
+const diagramAttrPattern = new RegExp(
+  `^\\[\\s*"?(${DIAGRAM_TYPES.join('|')})"?\\s*([,\\]]|$)`, 'i'
+);
+
+export function preprocessDiagramBlocks(source: string): string {
+  const lines = source.split('\n');
+  const result: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].match(diagramAttrPattern);
+    if (match) {
+      const diagramType = match[1].toLowerCase();
+      // Rewrite to [source,diagramType] so asciidoctor adds data-lang
+      result.push(`[source,${diagramType}]`);
+    } else {
+      result.push(lines[i]);
+    }
+  }
+
+  return result.join('\n');
+}
+
 // Simple DJB2 hash function for content hashing
 function hashContent(str: string): string {
   let hash = 5381;
@@ -24,96 +58,33 @@ interface DiagramBlock {
 // Extract diagram blocks from HTML
 function extractDiagramBlocks(container: HTMLElement): DiagramBlock[] {
   const blocks: DiagramBlock[] = [];
-  
-  // Find all code blocks with diagram types
-  const diagramTypes = [
-    'plantuml', 'mermaid', 'graphviz', 'ditaa', 'blockdiag', 'seqdiag',
-    'actdiag', 'nwdiag', 'packetdiag', 'rackdiag', 'c4plantuml', 'erd',
-    'excalidraw', 'pikchr', 'structurizr', 'vega', 'vegalite', 'wavedrom',
-    'bpmn', 'bytefield', 'svgbob', 'd2', 'dbml', 'nomnoml'
-  ];
-  
-  // Asciidoctor wraps diagram blocks in div.listingblock with class matching diagram type
+
   const listingBlocks = container.querySelectorAll('.listingblock');
-  
+
   listingBlocks.forEach((block) => {
     const codeElement = block.querySelector('pre code') || block.querySelector('pre');
-    
-    // Check what's in the previous sibling (might be heading with diagram type)
-    const prevHeading = block.previousElementSibling;
-    const headingText = (prevHeading?.textContent || '').toLowerCase().trim();
-    
-    // Try to detect diagram type from heading text
-    let detectedType: string | null = null;
-    
-    // Only match if the heading explicitly indicates it's a specific diagram type
-    // We need to be more strict to avoid false matches like "Diagram rendering (PlantUML, ...)"
-    const diagramHeadingPatterns: Record<string, RegExp> = {
-      'plantuml': /^plantuml\b|plantuml\s+(sequence|class|use\s*case|activity|component|state|deployment|timing|object|diagram)/i,
-      'mermaid': /^mermaid\b|mermaid\s+(flowchart|sequence|class|state|pie|gantt|diagram)/i,
-      'graphviz': /^graphviz\b|graphviz\s+(directed|graph|diagram)/i,
-      'ditaa': /^ditaa\b|ditaa\s+diagram/i,
-      'blockdiag': /^blockdiag\b|blockdiag\s+diagram/i,
-      'seqdiag': /^seqdiag\b|seqdiag\s+diagram/i,
-      'actdiag': /^actdiag\b|actdiag\s+diagram/i,
-      'nwdiag': /^nwdiag\b|nwdiag\s+diagram/i,
-    };
-    
-    // Check if heading matches any diagram type pattern
-    for (const [type, pattern] of Object.entries(diagramHeadingPatterns)) {
-      if (pattern.test(headingText)) {
-        detectedType = type;
-        break;
-      }
+    if (!codeElement) return;
+
+    const content = codeElement.textContent || '';
+    if (!content.trim()) return;
+
+    // Primary detection: data-lang attribute (set when preprocessDiagramBlocks
+    // converts [ditaa] to [source,ditaa] before asciidoctor processes it)
+    const lang = codeElement.getAttribute('data-lang');
+    if (lang && DIAGRAM_TYPES.includes(lang.toLowerCase())) {
+      blocks.push({ element: block, type: lang.toLowerCase(), content: content.trim() });
+      return;
     }
-    
-    // If we found a diagram type in the heading, extract and render it
-    if (detectedType && codeElement) {
-      const content = codeElement.textContent || '';
-      if (content.trim()) {
-        blocks.push({
-          element: block,
-          type: detectedType,
-          content: content.trim()
-        });
-        return; // Found it, done with this block
-      }
-    }
-    
-    // Fallback 1: Check data-lang attribute
-    if (codeElement) {
-      const lang = codeElement.getAttribute('data-lang');
-      if (lang && diagramTypes.includes(lang)) {
-        const content = codeElement.textContent || '';
-        if (content.trim()) {
-          blocks.push({
-            element: block,
-            type: lang,
-            content: content.trim()
-          });
-          return;
-        }
-      }
-    }
-    
-    // Fallback 2: check if this listing block has a diagram type class
-    for (const type of diagramTypes) {
+
+    // Fallback: check if the listingblock has a diagram type class
+    for (const type of DIAGRAM_TYPES) {
       if (block.classList.contains(type)) {
-        if (codeElement) {
-          const content = codeElement.textContent || '';
-          if (content.trim()) {
-            blocks.push({
-              element: block,
-              type,
-              content: content.trim()
-            });
-          }
-        }
+        blocks.push({ element: block, type, content: content.trim() });
         break;
       }
     }
   });
-  
+
   return blocks;
 }
 
@@ -127,7 +98,6 @@ async function renderDiagram(type: string, content: string, useCache: boolean = 
     if (useCache) {
       const cachedSvg = await indexedDBService.getCachedDiagram(cacheKey);
       if (cachedSvg) {
-        console.log(`Using cached diagram for ${type} (hash: ${cacheKey})`);
         return cachedSvg;
       }
     }
@@ -136,7 +106,6 @@ async function renderDiagram(type: string, content: string, useCache: boolean = 
     // Note: PlantUML content should INCLUDE @startuml/@enduml tags
     const url = `${KROKI_SERVER}/${type}/svg`;
     
-    console.log(`Fetching diagram from Kroki API: ${type}`);
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -216,6 +185,5 @@ export async function processKrokiDiagramsInHtml(html: string, useCache: boolean
 // Clear the Kroki diagram cache
 export async function clearKrokiCache(): Promise<void> {
   await indexedDBService.clearDiagramCache();
-  console.log('Kroki diagram cache cleared');
 }
 
