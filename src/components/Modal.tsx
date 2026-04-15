@@ -12,12 +12,12 @@ const Modal: React.FC<ModalProps> = ({ title, onClose, onConfirm, children }) =>
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-slate-800 p-6 rounded-sm shadow-lg w-96">
-        <h2 className="text-xl font-bold mb-4">{title}</h2>
+        <h2 className="text-xl font-bold mb-4 text-slate-900 dark:text-white">{title}</h2>
         {children}
         <div className="mt-4 flex justify-end space-x-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-300 dark:bg-slate-600 rounded-sm hover:bg-gray-400 dark:hover:bg-slate-700"
+            className="px-4 py-2 bg-gray-300 dark:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-sm hover:bg-gray-400 dark:hover:bg-slate-700"
           >
             Cancel
           </button>

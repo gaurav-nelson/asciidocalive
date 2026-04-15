@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, ScrollText, Network, Calculator, Sparkles, Star, ArrowRight } from 'lucide-react';
+import { FileText, Type, Share2, Github, List, Sparkles, Star, ArrowRight } from 'lucide-react';
 
 interface WhatsNewModalProps {
   version: string;
@@ -16,24 +16,29 @@ interface Feature {
 const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ version, onClose, isDark }) => {
   const features: Feature[] = [
     {
-      icon: <Database className="w-6 h-6 text-blue-500" />,
-      title: 'IndexedDB & Caching',
-      description: 'Migrated from localStorage with intelligent Kroki diagram caching',
+      icon: <FileText className="w-6 h-6 text-blue-500" />,
+      title: 'Multi-Document Management',
+      description: 'Create, rename, and switch between multiple documents from the sidebar. Your work is saved automatically to IndexedDB.',
     },
     {
-      icon: <ScrollText className="w-6 h-6 text-green-500" />,
-      title: 'Synchronized Scrolling',
-      description: 'Editor and preview now scroll together seamlessly for better navigation',
+      icon: <Type className="w-6 h-6 text-green-500" />,
+      title: 'Formatting Toolbar',
+      description: 'Bold, italic, headings, links, tables, code blocks, and more — all one click away. Keyboard shortcuts included (Ctrl+B, Ctrl+I, Ctrl+K).',
     },
     {
-      icon: <Network className="w-6 h-6 text-orange-500" />,
-      title: 'Kroki Diagrams',
-      description: 'Built-in support for various diagram types including PlantUML, Mermaid, and more',
+      icon: <Share2 className="w-6 h-6 text-orange-500" />,
+      title: 'URL-Based Sharing',
+      description: 'Share your document as a compressed URL. Recipients get a copy instantly — no server needed.',
     },
     {
-      icon: <Calculator className="w-6 h-6 text-pink-500" />,
-      title: 'MathJax Support',
-      description: 'Beautiful mathematical expression rendering with LaTeX syntax',
+      icon: <Github className="w-6 h-6 text-purple-500" />,
+      title: 'GitHub Gist Integration',
+      description: 'Save documents to GitHub Gist and load them back. Uses your Personal Access Token — your data stays yours.',
+    },
+    {
+      icon: <List className="w-6 h-6 text-pink-500" />,
+      title: 'Document Outline',
+      description: 'See all headings in the sidebar and click to navigate. The active heading highlights as you scroll.',
     },
   ];
 

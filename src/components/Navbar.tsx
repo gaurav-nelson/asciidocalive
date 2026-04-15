@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, RefObject } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, PanelLeftOpen, PanelLeftClose, Settings } from 'lucide-react';
 import ThemeToggle from './navbar/ThemeToggle';
 import Modal from './Modal';
 import ImportDropdown from './navbar/ImportDropdown';
@@ -8,9 +8,13 @@ import HelpDropdown from './navbar/HelpDropdown';
 import FocusModeToggle from './navbar/FocusModeToggle';
 import SyncScrollToggle from './navbar/SyncScrollToggle';
 import RefreshDiagramsButton from './navbar/RefreshDiagramsButton';
+import ShareButton from './navbar/ShareButton';
+import SettingsModal from './navbar/SettingsModal';
 import Divider from './navbar/Divider';
 import useClickOutside from '../hooks/useClickOutside';
 import { exportToAsciiDoc, exportToPDF, exportToHTML } from '../utils/exportUtils';
+import { saveToGist, loadFromGist } from '../utils/gistUtils';
+import { indexedDBService } from '../utils/indexedDBService';
 import packageJson from '../../package.json';
 
 const favicon32 = new URL('../assets/favicon-32x32.png', import.meta.url).href;
@@ -24,6 +28,12 @@ interface NavbarProps {
   onToggleSyncScroll: () => void;
   onRefreshDiagrams: (() => void) | null;
   onShowWhatsNew: () => void;
+  isSidebarOpen: boolean;
+  onToggleSidebar: () => void;
+  activeDocName?: string;
+  activeDocGistId?: string;
+  onGistSaved?: (gistId: string) => void;
+  onGistLoaded?: (content: string, name: string, gistId: string) => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
@@ -35,6 +45,12 @@ const Navbar: React.FC<NavbarProps> = ({
   onToggleSyncScroll,
   onRefreshDiagrams,
   onShowWhatsNew,
+  isSidebarOpen,
+  onToggleSidebar,
+  activeDocName,
+  activeDocGistId,
+  onGistSaved,
+  onGistLoaded,
 }) => {
   // Dropdown states
   const [isImportDropdownOpen, setIsImportDropdownOpen] = useState(false);
@@ -46,8 +62,10 @@ const Navbar: React.FC<NavbarProps> = ({
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [url, setUrl] = useState('');
-  const [importSource, setImportSource] = useState<'GitHub' | 'GitLab' | null>(null);
+  const [importSource, setImportSource] = useState<'GitHub' | 'GitLab' | 'Gist' | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSavingGist, setIsSavingGist] = useState(false);
 
   // Refs
   const importDropdownRef = useRef<HTMLDivElement>(null);
@@ -93,11 +111,11 @@ const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   // Handle import from various sources
-  const onImportClick = (source: 'file' | 'GitHub' | 'GitLab') => {
+  const onImportClick = (source: 'file' | 'GitHub' | 'GitLab' | 'Gist') => {
     if (source === 'file') {
       fileInputRef.current?.click();
     } else {
-      setImportSource(source as 'GitHub' | 'GitLab');
+      setImportSource(source as 'GitHub' | 'GitLab' | 'Gist');
       setIsModalOpen(true);
     }
   };
@@ -105,6 +123,20 @@ const Navbar: React.FC<NavbarProps> = ({
   const handleImportFromUrl = async () => {
     if (!url) {
       alert('Please enter a valid URL');
+      return;
+    }
+
+    if (importSource === 'Gist') {
+      try {
+        const token = await indexedDBService.getSetting<string>('githubToken');
+        const result = await loadFromGist(url, token || undefined);
+        onGistLoaded?.(result.content, result.name, result.gistId);
+        setIsModalOpen(false);
+        setUrl('');
+        setIsImportDropdownOpen(false);
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Failed to load Gist');
+      }
       return;
     }
 
@@ -148,8 +180,30 @@ const Navbar: React.FC<NavbarProps> = ({
   };
 
   // Handle exports
-  const onExportClick = async (format: 'PDF' | 'AsciiDoc' | 'HTML') => {
+  const onExportClick = async (format: 'PDF' | 'AsciiDoc' | 'HTML' | 'Gist') => {
     if (!getEditorContent) return;
+
+    if (format === 'Gist') {
+      setIsSavingGist(true);
+      try {
+        const token = await indexedDBService.getSetting<string>('githubToken');
+        if (!token) {
+          alert('Please set your GitHub token in Settings first.');
+          setIsSettingsOpen(true);
+          return;
+        }
+        const content = getEditorContent();
+        const result = await saveToGist(token, activeDocName || 'Untitled', content, activeDocGistId);
+        onGistSaved?.(result.id);
+        alert(`Saved to Gist: ${result.url}`);
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Failed to save to Gist');
+      } finally {
+        setIsSavingGist(false);
+        setIsExportDropdownOpen(false);
+      }
+      return;
+    }
 
     setIsExporting(true);
     try {
@@ -187,7 +241,7 @@ const Navbar: React.FC<NavbarProps> = ({
         previewElement.classList.remove('hidden', 'transition-opacity', 'duration-500', 'ease-in-out');
       }
     }
-  }, [isFocusMode, isDark]);
+  }, [isFocusMode]);
 
   // Close mobile menu on resize
   useEffect(() => {
@@ -204,10 +258,21 @@ const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   return (
-    <nav className="bg-slate-900 dark:bg-slate-900 text-white p-4">
+    <nav className="relative bg-slate-900 dark:bg-slate-900 text-white p-4">
       <div className="noselect mx-auto flex items-center justify-between">
-        {/* Logo */}
+        {/* Logo + Sidebar Toggle */}
         <div className="flex items-center space-x-2">
+          <button
+            onClick={onToggleSidebar}
+            className="p-1.5 rounded hover:bg-slate-700 transition-colors"
+            title={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+          >
+            {isSidebarOpen ? (
+              <PanelLeftClose className="h-5 w-5" />
+            ) : (
+              <PanelLeftOpen className="h-5 w-5" />
+            )}
+          </button>
           <img src={favicon32} alt="Logo" className="h-6 w-6" />
           <span className="text-xl font-bold">AsciiDoc Alive</span>
           <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-blue-600/20 text-blue-300 border border-blue-500/30">
@@ -215,17 +280,20 @@ const Navbar: React.FC<NavbarProps> = ({
           </span>
         </div>
 
-        {/* Mobile menu toggle */}
-        <button
-          className="md:hidden flex items-center px-3 py-2 rounded-sm hover:bg-slate-700 transition-colors"
-          onClick={toggleMobileMenu}
-        >
-          {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        {/* Mobile header actions + menu toggle */}
+        <div className="md:hidden flex items-center gap-1 ml-auto">
+          <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
+          <ShareButton getEditorContent={getEditorContent} />
+          <button
+            className="flex items-center px-3 py-2 rounded-sm hover:bg-slate-700 transition-colors"
+            onClick={toggleMobileMenu}
+          >
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
 
-        {/* Navigation items */}
-        <div className={`md:flex items-center space-x-4 ${isMobileMenuOpen ? 'block' : 'hidden'}`}>
-          {/* Hidden file input */}
+        {/* Desktop navigation */}
+        <div className="hidden md:flex items-center space-x-4">
           <input
             type="file"
             ref={fileInputRef}
@@ -234,7 +302,6 @@ const Navbar: React.FC<NavbarProps> = ({
             onChange={handleFileUpload}
           />
 
-          {/* Import dropdown */}
           <div ref={importDropdownRef}>
             <ImportDropdown
               isOpen={isImportDropdownOpen}
@@ -243,45 +310,45 @@ const Navbar: React.FC<NavbarProps> = ({
             />
           </div>
 
-          {/* Export dropdown */}
           <div ref={exportDropdownRef}>
             <ExportDropdown
               isOpen={isExportDropdownOpen}
               toggleDropdown={toggleExportDropdown}
               onExportClick={onExportClick}
-              isExporting={isExporting}
+              isExporting={isExporting || isSavingGist}
             />
           </div>
 
+          <ShareButton getEditorContent={getEditorContent} />
+
           <Divider />
 
-          {/* Theme toggle */}
           <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
-
-          {/* Focus mode toggle */}
           <FocusModeToggle isFocusMode={isFocusMode} onToggle={toggleFocusMode} />
-
-          {/* Sync scroll toggle */}
           <SyncScrollToggle isSyncScrollEnabled={syncScrollEnabled} onToggle={onToggleSyncScroll} />
-
-          {/* Refresh diagrams button */}
           <RefreshDiagramsButton onRefresh={onRefreshDiagrams} />
 
           <Divider />
 
-          {/* DraftView CTA */}
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="cursor-pointer flex items-center space-x-2 px-3 py-2 rounded-sm hover:bg-slate-700 transition-colors"
+            title="Settings"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+
           <a
             href="https://draftview.app"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium text-blue-300 border border-blue-500/40 hover:border-blue-400 hover:text-blue-200 transition-colors whitespace-nowrap"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium text-blue-300 border border-blue-500/40 hover:border-blue-400 hover:text-blue-200 transition-colors whitespace-nowrap"
             title="Review your docs with stakeholders — no GitHub account needed"
           >
             Review in DraftView
             <span aria-hidden="true">→</span>
           </a>
 
-          {/* Help dropdown */}
           <div ref={helpDropdownRef}>
             <HelpDropdown
               isOpen={isHelpDropdownOpen}
@@ -290,7 +357,66 @@ const Navbar: React.FC<NavbarProps> = ({
             />
           </div>
         </div>
+
+        {/* Mobile menu dropdown */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden absolute top-full left-0 right-0 bg-slate-900 border-t border-slate-700 p-3 z-50 shadow-lg">
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept=".adoc,.asciidoc,.asc"
+              onChange={handleFileUpload}
+            />
+
+            {/* Row 1: Import, Export */}
+            <div className="flex items-center justify-end gap-2 mb-2">
+              <div ref={importDropdownRef}>
+                <ImportDropdown
+                  isOpen={isImportDropdownOpen}
+                  toggleDropdown={toggleImportDropdown}
+                  onImportClick={onImportClick}
+                />
+              </div>
+              <div ref={exportDropdownRef}>
+                <ExportDropdown
+                  isOpen={isExportDropdownOpen}
+                  toggleDropdown={toggleExportDropdown}
+                  onExportClick={onExportClick}
+                  isExporting={isExporting || isSavingGist}
+                />
+              </div>
+            </div>
+
+            <div className="h-px bg-slate-700 my-2" />
+
+            {/* Row 2: Icon toggles */}
+            <div className="flex items-center justify-end gap-3 flex-wrap">
+              <SyncScrollToggle isSyncScrollEnabled={syncScrollEnabled} onToggle={onToggleSyncScroll} />
+              <RefreshDiagramsButton onRefresh={onRefreshDiagrams} />
+              <button
+                onClick={() => { setIsSettingsOpen(true); setIsMobileMenuOpen(false); }}
+                className="cursor-pointer flex items-center space-x-2 px-3 py-2 rounded-sm hover:bg-slate-700 transition-colors"
+                title="Settings"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+              <div ref={helpDropdownRef}>
+                <HelpDropdown
+                  isOpen={isHelpDropdownOpen}
+                  toggleDropdown={toggleHelpDropdown}
+                  onShowWhatsNew={onShowWhatsNew}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Settings modal */}
+      {isSettingsOpen && (
+        <SettingsModal onClose={() => setIsSettingsOpen(false)} />
+      )}
 
       {/* Import modal */}
       {isModalOpen && (
@@ -308,12 +434,18 @@ const Navbar: React.FC<NavbarProps> = ({
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder={`Enter ${importSource} raw file URL`}
-              className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-sm dark:bg-slate-700 dark:text-white"
+              placeholder={
+                importSource === 'Gist'
+                  ? 'Enter Gist URL or ID'
+                  : `Enter ${importSource} raw file URL`
+              }
+              className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
             />
             <p className="text-sm text-slate-600 dark:text-slate-400">
               {importSource === 'GitHub'
                 ? "Tip: Use the raw file URL or paste the regular GitHub file URL"
+                : importSource === 'Gist'
+                ? "Paste a GitHub Gist URL or just the Gist ID"
                 : "Tip: Use the raw file URL from your GitLab repository"}
             </p>
           </div>
