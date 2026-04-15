@@ -199,6 +199,10 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
   ({ initialValue, onChange, isDark, onEditorCreated, onCursorChange }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView>();
+    const onChangeRef = useRef(onChange);
+    const onCursorChangeRef = useRef(onCursorChange);
+    onChangeRef.current = onChange;
+    onCursorChangeRef.current = onCursorChange;
 
     useImperativeHandle(ref, () => ({
       applyToolbarAction: (action: ToolbarAction) => {
@@ -214,7 +218,11 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
       try {
         const state = EditorState.create({
           doc: initialValue,
-          extensions: createExtensions(isDark, onChange, onCursorChange),
+          extensions: createExtensions(
+            isDark,
+            (value: string) => onChangeRef.current(value),
+            (lineNumber: number, lineContent: string) => onCursorChangeRef.current?.(lineNumber, lineContent),
+          ),
         });
 
         const view = new EditorView({
@@ -232,20 +240,25 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
       } catch (error) {
         console.error('Error initializing CodeMirror:', error);
       }
-    }, [onChange, isDark, onEditorCreated, onCursorChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    // Handle theme changes
+    // Handle theme changes — uses refs so the update listener always calls the latest callbacks
     useEffect(() => {
       if (!viewRef.current) return;
 
       try {
         viewRef.current.dispatch({
-          effects: StateEffect.reconfigure.of(createExtensions(isDark, onChange, onCursorChange))
+          effects: StateEffect.reconfigure.of(createExtensions(
+            isDark,
+            (value: string) => onChangeRef.current(value),
+            (lineNumber: number, lineContent: string) => onCursorChangeRef.current?.(lineNumber, lineContent),
+          ))
         });
       } catch (error) {
         console.error('Error updating CodeMirror theme:', error);
       }
-    }, [isDark, onChange, onCursorChange]);
+    }, [isDark]);
 
     // Handle external value changes
     useEffect(() => {

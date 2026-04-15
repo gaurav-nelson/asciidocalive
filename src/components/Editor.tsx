@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import asciidoctor from "asciidoctor";
 import { Eye, Pencil } from "lucide-react";
 import CodeMirrorEditor, { CodeMirrorEditorHandle } from "./CodeMirrorEditor";
@@ -6,10 +6,19 @@ import Toolbar, { ToolbarAction } from "./Toolbar";
 import { EditorView } from "@codemirror/view";
 import hljs from 'highlight.js';
 import 'highlight.js/styles/default.css';
-import { processKrokiDiagramsInHtml, clearKrokiCache } from "../utils/krokiUtils";
+import { processKrokiDiagramsInHtml, clearKrokiCache, preprocessDiagramBlocks } from "../utils/krokiUtils";
 import type { OutlineHeading } from "./sidebar/DocumentOutline";
 
 const processor = asciidoctor();
+
+// Debounce utility (outside component to avoid recreation)
+function debounce<T extends (...args: any[]) => void>(func: T, wait: number): T {
+  let timeout: number | null = null;
+  return ((...args: any[]) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = window.setTimeout(() => func(...args), wait);
+  }) as unknown as T;
+}
 
 export const defaultContent = `= Welcome to AsciiDoc Alive
 :toc: auto
@@ -174,6 +183,7 @@ const Editor: React.FC<EditorProps> = ({
   onHeadingsChange,
 }) => {
   const [content, setContent] = useState(defaultContent);
+  const [debouncedContent, setDebouncedContent] = useState(defaultContent);
   const [html, setHtml] = useState("");
   const [editorView, setEditorView] = useState<EditorView | null>(null);
   const [asciidoctorStyles, setAsciidoctorStyles] = useState("");
@@ -181,9 +191,22 @@ const Editor: React.FC<EditorProps> = ({
   const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor');
 
   const codeMirrorRef = useRef<CodeMirrorEditorHandle>(null);
+  const isRefreshingRef = useRef(false);
 
   // Track render version to discard stale async diagram results
   const renderVersionRef = useRef(0);
+
+  // Debounce content changes before triggering conversion
+  const debounceTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = window.setTimeout(() => {
+      setDebouncedContent(content);
+    }, 200);
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [content]);
 
   // Refs for scroll sync
   const previewRef = useRef<HTMLDivElement>(null);
@@ -215,7 +238,7 @@ const Editor: React.FC<EditorProps> = ({
 
     const convertAndRender = async () => {
       try {
-        const converted = processor.convert(content, {
+        const converted = processor.convert(preprocessDiagramBlocks(debouncedContent), {
           safe: "safe",
           attributes: {
             showtitle: true,
@@ -260,6 +283,23 @@ const Editor: React.FC<EditorProps> = ({
             });
           }
 
+          // Handle broken images: show placeholder and stop re-requests
+          if (previewElement) {
+            const images = previewElement.querySelectorAll('img');
+            images.forEach((img) => {
+              img.onerror = () => {
+                img.onerror = null;
+                img.alt = `[Image not found: ${img.getAttribute('src') || 'unknown'}]`;
+                img.src = 'data:image/svg+xml,' + encodeURIComponent(
+                  '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="80">' +
+                  '<rect width="200" height="80" fill="#f3f4f6" rx="4"/>' +
+                  '<text x="100" y="44" text-anchor="middle" fill="#9ca3af" font-size="14" font-family="sans-serif">Image not found</text>' +
+                  '</svg>'
+                );
+              };
+            });
+          }
+
           // Trigger MathJax typesetting
           if (window.MathJax && window.MathJax.typesetPromise) {
             window.MathJax.typesetPromise().catch((err: Error) =>
@@ -273,7 +313,7 @@ const Editor: React.FC<EditorProps> = ({
     };
 
     convertAndRender();
-  }, [content, isDark, onHeadingsChange]);
+  }, [debouncedContent, isDark, onHeadingsChange]);
 
   const handleEditorCreated = useCallback(
     (view: EditorView) => {
@@ -289,15 +329,19 @@ const Editor: React.FC<EditorProps> = ({
   }, []);
 
   // Expose refresh diagrams function
-  const handleRefreshDiagrams = useCallback(async () => {
-    if (isRefreshing) return;
+  const contentRef = useRef(debouncedContent);
+  contentRef.current = debouncedContent;
 
+  const handleRefreshDiagrams = useCallback(async () => {
+    if (isRefreshingRef.current) return;
+
+    isRefreshingRef.current = true;
     setIsRefreshing(true);
 
     try {
       await clearKrokiCache();
 
-      const converted = processor.convert(content, {
+      const converted = processor.convert(preprocessDiagramBlocks(contentRef.current), {
         safe: "safe",
         attributes: {
           showtitle: true,
@@ -312,23 +356,15 @@ const Editor: React.FC<EditorProps> = ({
     } catch (error) {
       console.error('Error refreshing diagrams:', error);
     } finally {
+      isRefreshingRef.current = false;
       setIsRefreshing(false);
     }
-  }, [isRefreshing, content]);
+  }, []);
 
   // Register the refresh function with parent
   useEffect(() => {
     onRefreshDiagramsReady(handleRefreshDiagrams);
   }, [onRefreshDiagramsReady, handleRefreshDiagrams]);
-
-  // Debounce function
-  const debounce = (func: Function, wait: number) => {
-    let timeout: number | null = null;
-    return (...args: any[]) => {
-      if (timeout) clearTimeout(timeout);
-      timeout = window.setTimeout(() => func(...args), wait);
-    };
-  };
 
   // Calculate scroll percentage
   const calculateScrollPercentage = (element: Element): number => {
@@ -382,8 +418,8 @@ const Editor: React.FC<EditorProps> = ({
   }, [syncScrollEnabled]);
 
   // Handle editor scroll
-  const handleEditorScroll = useCallback(
-    debounce(() => {
+  const handleEditorScroll = useMemo(
+    () => debounce(() => {
       if (!syncScrollEnabled || !editorView || !previewRef.current || isPreviewScrollingRef.current) {
         return;
       }
@@ -403,8 +439,8 @@ const Editor: React.FC<EditorProps> = ({
   );
 
   // Handle preview scroll
-  const handlePreviewScroll = useCallback(
-    debounce(() => {
+  const handlePreviewScroll = useMemo(
+    () => debounce(() => {
       if (!syncScrollEnabled || !editorView || !previewRef.current || isEditorScrollingRef.current) {
         return;
       }
