@@ -1,4 +1,4 @@
-import { useEffect, useRef, forwardRef } from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { EditorState, StateEffect } from '@codemirror/state';
 import {
   EditorView,
@@ -12,6 +12,11 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import { asciidoc } from 'codemirror-asciidoc';
 import { oneDark } from '@codemirror/theme-one-dark';
+import type { ToolbarAction } from './Toolbar';
+
+export interface CodeMirrorEditorHandle {
+  applyToolbarAction: (action: ToolbarAction) => void;
+}
 
 interface CodeMirrorEditorProps {
   initialValue: string;
@@ -86,8 +91,84 @@ const getThemeExtensions = (isDark: boolean) =>
     ? oneDark
     : [customLightTheme, syntaxHighlighting(lightHighlightStyle)];
 
+function applyToolbarAction(view: EditorView, action: ToolbarAction) {
+  const { from, to } = view.state.selection.main;
+  const selected = view.state.sliceDoc(from, to);
+
+  let insert: string;
+  let cursorPos: number;
+
+  switch (action.type) {
+    case 'wrap': {
+      insert = selected
+        ? `${action.before}${selected}${action.after}`
+        : `${action.before}${action.after}`;
+      cursorPos = selected ? from + insert.length : from + action.before.length;
+      break;
+    }
+    case 'linePrefix': {
+      const line = view.state.doc.lineAt(from);
+      view.dispatch({
+        changes: { from: line.from, to: line.from, insert: action.prefix },
+      });
+      return;
+    }
+    case 'insert': {
+      insert = action.text;
+      cursorPos = from + insert.length;
+      break;
+    }
+    case 'wrapBlock': {
+      insert = selected
+        ? `${action.before}${selected}${action.after}`
+        : `${action.before}${action.after}`;
+      cursorPos = selected ? from + insert.length : from + action.before.length;
+      break;
+    }
+    default:
+      return;
+  }
+
+  view.dispatch({
+    changes: { from, to, insert },
+    selection: { anchor: cursorPos },
+  });
+  view.focus();
+}
+
+const asciidocKeymap = [
+  {
+    key: 'Mod-b',
+    run: (view: EditorView) => {
+      applyToolbarAction(view, { type: 'wrap', before: '*', after: '*' });
+      return true;
+    },
+  },
+  {
+    key: 'Mod-i',
+    run: (view: EditorView) => {
+      applyToolbarAction(view, { type: 'wrap', before: '_', after: '_' });
+      return true;
+    },
+  },
+  {
+    key: 'Mod-`',
+    run: (view: EditorView) => {
+      applyToolbarAction(view, { type: 'wrap', before: '`', after: '`' });
+      return true;
+    },
+  },
+  {
+    key: 'Mod-k',
+    run: (view: EditorView) => {
+      applyToolbarAction(view, { type: 'insert', text: 'https://url[link text]' });
+      return true;
+    },
+  },
+];
+
 const createExtensions = (
-  isDark: boolean, 
+  isDark: boolean,
   onChange: (value: string) => void,
   onCursorChange?: (lineNumber: number, lineContent: string) => void
 ) => [
@@ -95,7 +176,7 @@ const createExtensions = (
   lineNumbers(),
   highlightActiveLine(),
   StreamLanguage.define(asciidoc),
-  keymap.of([...defaultKeymap, ...historyKeymap]),
+  keymap.of([...asciidocKeymap, ...defaultKeymap, ...historyKeymap]),
   EditorView.lineWrapping,
   EditorView.updateListener.of((update) => {
     if (update.docChanged) {
@@ -114,10 +195,18 @@ const createExtensions = (
   getThemeExtensions(isDark),
 ];
 
-const CodeMirrorEditor = forwardRef<HTMLDivElement, CodeMirrorEditorProps>(
+const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProps>(
   ({ initialValue, onChange, isDark, onEditorCreated, onCursorChange }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView>();
+
+    useImperativeHandle(ref, () => ({
+      applyToolbarAction: (action: ToolbarAction) => {
+        if (viewRef.current) {
+          applyToolbarAction(viewRef.current, action);
+        }
+      },
+    }), []);
 
     useEffect(() => {
       if (!editorRef.current || viewRef.current) return;
@@ -170,7 +259,7 @@ const CodeMirrorEditor = forwardRef<HTMLDivElement, CodeMirrorEditorProps>(
       }
     }, [initialValue]);
 
-    return <div ref={ref || editorRef} className="h-full" />;
+    return <div ref={editorRef} className="h-full" />;
   }
 );
 
