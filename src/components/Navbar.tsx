@@ -8,7 +8,6 @@ import HelpDropdown from './navbar/HelpDropdown';
 import FocusModeToggle from './navbar/FocusModeToggle';
 import SyncScrollToggle from './navbar/SyncScrollToggle';
 import RefreshDiagramsButton from './navbar/RefreshDiagramsButton';
-import ShareButton from './navbar/ShareButton';
 import SettingsModal from './navbar/SettingsModal';
 import Divider from './navbar/Divider';
 import useClickOutside from '../hooks/useClickOutside';
@@ -283,7 +282,6 @@ const Navbar: React.FC<NavbarProps> = ({
         {/* Mobile header actions + menu toggle */}
         <div className="md:hidden flex items-center gap-1 ml-auto">
           <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
-          <ShareButton getEditorContent={getEditorContent} />
           <button
             className="flex items-center px-3 py-2 rounded-sm hover:bg-slate-700 transition-colors"
             onClick={toggleMobileMenu}
@@ -318,8 +316,6 @@ const Navbar: React.FC<NavbarProps> = ({
               isExporting={isExporting || isSavingGist}
             />
           </div>
-
-          <ShareButton getEditorContent={getEditorContent} />
 
           <Divider />
 

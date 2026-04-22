@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Type, Share2, Github, List, Sparkles, Star, ArrowRight } from 'lucide-react';
+import { FileText, Type, Github, List, Sparkles, Star, ArrowRight } from 'lucide-react';
 
 interface WhatsNewModalProps {
   version: string;
@@ -25,12 +25,7 @@ const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ version, onClose, isDark 
       title: 'Formatting Toolbar',
       description: 'Bold, italic, headings, links, tables, code blocks, and more — all one click away. Keyboard shortcuts included (Ctrl+B, Ctrl+I, Ctrl+K).',
     },
-    {
-      icon: <Share2 className="w-6 h-6 text-orange-500" />,
-      title: 'URL-Based Sharing',
-      description: 'Share your document as a compressed URL. Recipients get a copy instantly — no server needed.',
-    },
-    {
+{
       icon: <Github className="w-6 h-6 text-purple-500" />,
       title: 'GitHub Gist Integration',
       description: 'Save documents to GitHub Gist and load them back. Uses your Personal Access Token — your data stays yours.',

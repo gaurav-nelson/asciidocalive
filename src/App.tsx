@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect, Suspense, lazy } from 'react';
 import { indexedDBService } from './utils/indexedDBService';
 import { isNewerVersion } from './utils/versionUtils';
-import { decodeDocumentFromUrl } from './utils/shareUtils';
 import { useDocuments } from './hooks/useDocuments';
 import WhatsNewModal from './components/WhatsNewModal';
 import Sidebar from './components/Sidebar';
@@ -53,12 +52,6 @@ const App: React.FC = () => {
         setShowWhatsNew(true);
       }
 
-      // Check for shared document in URL
-      const sharedContent = await decodeDocumentFromUrl();
-      if (sharedContent) {
-        // Will be handled after documents load
-        setFileContent(sharedContent);
-      }
     };
 
     initializeSettings();
