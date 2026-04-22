@@ -1,12 +1,12 @@
 # Stage 1: Build the application
-FROM node:18-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
 RUN npm ci
 
-ENV PATH /app/node_modules/.bin:$PATH
+ENV PATH=/app/node_modules/.bin:$PATH
 
 COPY . .
 RUN npm run build
