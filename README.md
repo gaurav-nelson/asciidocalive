@@ -21,7 +21,6 @@ This is a one-time action. Future updates will load automatically!
 
 - Draft and preview AsciiDoc in the browser without installing anything
 - Work across multiple documents in one session
-- Share a document instantly with a compressed URL
 - Save drafts to GitHub Gist and load them back later
 - Review diagrams, math, and structured technical content on desktop or mobile
 
@@ -38,10 +37,9 @@ This is a one-time action. Future updates will load automatically!
 - **Dark Mode**: Toggle between light and dark themes
 - **Experimental UI Elements**: Preview support for keyboard shortcuts, buttons, and menu UI macros
 
-### Document Management & Sharing
+### Document Management
 - **Multi-Document Management**: Create, rename, and switch between multiple documents from the sidebar
 - **Auto-save**: Your work is saved automatically to IndexedDB
-- **URL-Based Sharing**: Share your document as a compressed URL so others can open their own copy instantly
 - **GitHub Gist Integration**: Save documents to GitHub Gist and load them back using your Personal Access Token
 
 ### File Handling
