@@ -1,0 +1,19 @@
+{
+  "headers": [
+    {
+      "source": "/404.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, s-maxage=86400"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/SF_:path*",
+      "destination": "/404.html"
+    }
+  ]
+}
