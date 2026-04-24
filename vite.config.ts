@@ -30,9 +30,9 @@ export default defineConfig({
         'android-chrome-512x512.png',
       ],
       manifest: {
-        name: 'AsciiDoc Alive',
+        name: 'AsciiDoc Alive - by DraftView.app',
         short_name: 'AsciiDocAlive',
-        description: 'A live AsciiDoc editor with real-time preview',
+        description: 'A live AsciiDoc editor with real-time preview - by DraftView.app',
         theme_color: '#ffffff',
         icons: [
           {
